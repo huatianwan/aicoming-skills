@@ -27,7 +27,7 @@ client = OpenAI(
 
 # Non-streaming
 resp = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-5.4-mini",
     messages=[
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": "Explain quantum computing in one sentence."},
@@ -39,7 +39,7 @@ print(resp.choices[0].message.content)
 
 # Streaming
 stream = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-5.4-mini",
     messages=[{"role": "user", "content": "Write a haiku about the sea."}],
     stream=True,
 )
@@ -99,9 +99,9 @@ def chat_stream(model: str, messages: list, **kwargs):
 
 
 if __name__ == "__main__":
-    print(chat("gpt-4o-mini", [{"role": "user", "content": "Hello!"}]))
+    print(chat("gpt-5.4-mini", [{"role": "user", "content": "Hello!"}]))
 
-    for piece in chat_stream("gpt-4o-mini", [{"role": "user", "content": "Count to 5."}]):
+    for piece in chat_stream("gpt-5.4-mini", [{"role": "user", "content": "Count to 5."}]):
         print(piece, end="", flush=True)
     print()
 ```
@@ -120,7 +120,7 @@ const client = new OpenAI({
 
 // Non-streaming
 const resp = await client.chat.completions.create({
-  model: 'gpt-4o-mini',
+  model: 'gpt-5.4-mini',
   messages: [{ role: 'user', content: 'Hello!' }],
   max_tokens: 1024,
 });
@@ -128,7 +128,7 @@ console.log(resp.choices[0].message.content);
 
 // Streaming
 const stream = await client.chat.completions.create({
-  model: 'gpt-4o-mini',
+  model: 'gpt-5.4-mini',
   messages: [{ role: 'user', content: 'Write a short poem.' }],
   stream: true,
 });
@@ -149,7 +149,7 @@ curl https://aicoming.top/v1/chat/completions \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-4o-mini",
+    "model": "gpt-5.4-mini",
     "messages": [{"role": "user", "content": "Hello!"}]
   }'
 
@@ -158,7 +158,7 @@ curl -N https://aicoming.top/v1/chat/completions \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-4o-mini",
+    "model": "gpt-5.4-mini",
     "messages": [{"role": "user", "content": "Hello!"}],
     "stream": true
   }'
@@ -169,7 +169,7 @@ Response (non-streaming, standard OpenAI format):
 {
   "id": "chatcmpl-xxx",
   "object": "chat.completion",
-  "model": "gpt-4o-mini",
+  "model": "gpt-5.4-mini",
   "choices": [{
     "index": 0,
     "message": {"role": "assistant", "content": "Hello! How can I help?"},

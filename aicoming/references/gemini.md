@@ -25,7 +25,7 @@ Content-Type: application/json
 
 ```bash
 # Non-streaming
-curl "https://aicoming.top/v1beta/models/gemini-1.5-pro:generateContent" \
+curl "https://aicoming.top/v1beta/models/gemini-3.1-pro-preview:generateContent" \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -35,7 +35,7 @@ curl "https://aicoming.top/v1beta/models/gemini-1.5-pro:generateContent" \
   }'
 
 # Streaming
-curl -N "https://aicoming.top/v1beta/models/gemini-1.5-pro:streamGenerateContent" \
+curl -N "https://aicoming.top/v1beta/models/gemini-3.1-pro-preview:streamGenerateContent" \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -69,7 +69,7 @@ def generate(model: str, prompt: str) -> str:
 
 
 if __name__ == "__main__":
-    print(generate("gemini-1.5-pro", "Hello, Gemini!"))
+    print(generate("gemini-3.1-pro-preview", "Hello, Gemini!"))
 ```
 
 ---
@@ -88,7 +88,7 @@ client = genai.Client(
     http_options=HttpOptions(base_url="https://aicoming.top"),
 )
 resp = client.models.generate_content(
-    model="gemini-1.5-pro",
+    model="gemini-3.1-pro-preview",
     contents="Hello, Gemini!",
 )
 print(resp.text)

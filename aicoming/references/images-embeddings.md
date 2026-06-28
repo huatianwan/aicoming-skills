@@ -2,7 +2,9 @@
 
 All OpenAI-compatible, under `https://aicoming.top/v1`. Use the OpenAI SDK with `base_url="https://aicoming.top/v1"`, or raw HTTP.
 
-> Fetch `GET https://aicoming.top/api/v1/models` for valid model IDs. The IDs below are illustrative.
+> Fetch `GET https://aicoming.top/api/v1/models` for valid model IDs and use the `name` field. Image models seen live include `gpt-image-2-1k`, `gpt-image-2-2k`, `nano-banana-pro`.
+>
+> **Note:** the `/v1/embeddings`, `/v1/rerank`, and `/v1/audio/*` endpoints exist, but at the time of writing the model list contains only chat/image/video models. The embedding/rerank/audio model IDs below are placeholders — confirm a matching model is present in `/api/v1/models` before relying on them.
 
 ---
 
@@ -17,7 +19,7 @@ from openai import OpenAI
 client = OpenAI(api_key=os.environ["AICOMING_API_KEY"], base_url="https://aicoming.top/v1")
 
 resp = client.images.generate(
-    model="dall-e-3",                   # verify via /api/v1/models
+    model="gpt-image-2-1k",                   # verify via /api/v1/models
     prompt="A serene Japanese garden with cherry blossoms, soft light",
     size="1024x1024",
     n=1,
@@ -32,7 +34,7 @@ curl https://aicoming.top/v1/images/generations \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "dall-e-3",
+    "model": "gpt-image-2-1k",
     "prompt": "A futuristic city skyline at sunset",
     "size": "1024x1024",
     "n": 1

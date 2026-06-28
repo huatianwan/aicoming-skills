@@ -33,7 +33,7 @@ client = OpenAI(
     base_url="https://aicoming.top/v1",
 )
 resp = client.chat.completions.create(
-    model="gpt-4o-mini",                       # verify via /api/v1/models first
+    model="gpt-5.4-mini",                      # verify via /api/v1/models first
     messages=[{"role": "user", "content": "Hello!"}],
 )
 print(resp.choices[0].message.content)
@@ -137,18 +137,22 @@ Read the corresponding reference file when you need to write specific integratio
 - **GET requests** (model list, balance): safe to retry up to 3 times with exponential backoff (1s → 2s → 4s).
 - **POST generation requests**: AIComing's smart router already fails over between providers. Do NOT blindly retry the same chat/image request — it may double-charge.
 
-## Popular Models (illustrative only — MUST verify via `/api/v1/models` before use)
+## Popular Models (snapshot — MUST re-verify via `/api/v1/models` before use)
 
-| Model ID | Type | Notes |
-|----------|------|-------|
-| `gpt-4o-mini` | chat | Fast, cheap OpenAI tier |
-| `gpt-4o` | chat | OpenAI flagship multimodal |
-| `claude-3-5-sonnet` | chat | Anthropic, via `/v1/chat/completions` or `/v1/messages` |
-| `gemini-1.5-pro` | chat | Google, via OpenAI format or `/v1beta/models` |
-| `deepseek-chat` | chat | Cost-effective |
-| `text-embedding-3-small` | embedding | OpenAI embeddings |
+The model `id` in the list response is a numeric primary key. **The string you pass as `"model"` in a request is the `name` field** (which equals `slug`). Examples below were live at the time of writing:
 
-> The real, current list lives at `GET https://aicoming.top/api/v1/models` (no auth). Always fetch it before quoting a model ID.
+| `name` (use this) | Type | Call via |
+|-------------------|------|----------|
+| `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini` | chat | `/v1/chat/completions` |
+| `gpt-5.3-codex` | chat (code) | `/v1/chat/completions` |
+| `claude-opus-4-8`, `claude-sonnet-4-6` | chat | `/v1/chat/completions` or `/v1/messages` |
+| `deepseek-v4-pro`, `deepseek-v4-flash` | chat | `/v1/chat/completions` |
+| `gemini-3.1-pro-preview` | chat | `/v1/chat/completions` or `/v1beta/models` |
+| `glm-5.1`, `kimi-k2.6` | chat | `/v1/chat/completions` |
+| `gpt-image-2-1k`, `gpt-image-2-2k`, `nano-banana-pro` | image | `/v1/images/generations` |
+| `bytedance/seedance-2.0/text-to-video` | video | (see provider docs) |
+
+> Models change constantly. The real, current list lives at `GET https://aicoming.top/api/v1/models` (no auth, response wrapped in `{"data":[...]}`). Always fetch it and use the `name` field verbatim before quoting a model ID. Note: embeddings / rerank / audio endpoints exist, but a matching model must be present in the list — verify before using.
 
 ## MCP Server (Optional)
 

@@ -18,7 +18,7 @@ client = Anthropic(
 )
 
 resp = client.messages.create(
-    model="claude-3-5-sonnet",          # verify via /api/v1/models
+    model="claude-opus-4-8",          # verify via /api/v1/models
     max_tokens=1024,
     messages=[{"role": "user", "content": "Hello, Claude!"}],
 )
@@ -42,7 +42,7 @@ HEADERS = {
 }
 
 body = {
-    "model": "claude-3-5-sonnet",
+    "model": "claude-opus-4-8",
     "max_tokens": 1024,
     "messages": [{"role": "user", "content": "Explain SSE in one line."}],
 }
@@ -81,7 +81,7 @@ const client = new Anthropic({
 });
 
 const resp = await client.messages.create({
-  model: 'claude-3-5-sonnet',
+  model: 'claude-opus-4-8',
   max_tokens: 1024,
   messages: [{ role: 'user', content: 'Hello!' }],
 });
@@ -98,7 +98,7 @@ curl https://aicoming.top/v1/messages \
   -H "Content-Type: application/json" \
   -H "anthropic-version: 2023-06-01" \
   -d '{
-    "model": "claude-3-5-sonnet",
+    "model": "claude-opus-4-8",
     "max_tokens": 1024,
     "messages": [{"role": "user", "content": "Hello!"}]
   }'
@@ -111,7 +111,7 @@ Response (Anthropic format):
   "type": "message",
   "role": "assistant",
   "content": [{"type": "text", "text": "Hello! How can I help?"}],
-  "model": "claude-3-5-sonnet",
+  "model": "claude-opus-4-8",
   "stop_reason": "end_turn",
   "usage": {"input_tokens": 10, "output_tokens": 8}
 }
