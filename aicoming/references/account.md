@@ -96,6 +96,40 @@ requests.post(f"{BASE}/wallet/topup", headers=AUTH,
 
 ---
 
+## Enabling a Model Your Key Can't Call Yet (Provider Subscriptions, JWT auth)
+
+Models are provided by **providers (merchants)**. A key can only call models from subscribed providers. To unlock a model that's missing from `GET /v1/models`:
+
+```python
+# 1. Find the provider for the model (from the public catalog)
+catalog = requests.get("https://api.aicoming.top/api/v1/models", timeout=30).json()["data"]
+target = next(m for m in catalog if m["name"] == "claude-opus-4-8")
+provider_id = target["provider_id"]   # also: target["available_providers"], target["provider_name"]
+
+# 2. Subscribe to that provider (account-level; all your keys inherit it)
+requests.post(f"{BASE}/providers/{provider_id}/subscribe", headers=AUTH, timeout=30)
+
+# 3. (Optional) buy a package if the model is gated behind a subscription plan
+requests.post(f"{BASE}/wallet/subscriptions/purchase", headers=AUTH,
+              json={"package_id": 1}, timeout=30)
+
+# 4. Now it shows up for the key:
+requests.get("https://api.aicoming.top/v1/models",
+             headers={"Authorization": f"Bearer {os.environ['AICOMING_API_KEY']}"}, timeout=30).json()
+```
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET`  | `/api/v1/providers` | Browse providers (public) |
+| `GET`  | `/api/v1/providers/subscriptions` | Your current subscriptions |
+| `POST` | `/api/v1/providers/{id}/subscribe` | Subscribe to a provider |
+| `DELETE` | `/api/v1/providers/{id}/subscribe` | Unsubscribe |
+| `POST` | `/api/v1/providers/subscriptions/bulk` | Bulk subscribe/favorite |
+| `POST` | `/api/v1/wallet/subscriptions/purchase` | Buy a subscription package |
+| `GET`  | `/api/v1/wallet/subscriptions` | Your packages |
+
+> Subscriptions are account-level — every API key on the account inherits them. Per-key routing preferences are set separately via `PUT /api/v1/keys/{id}/route-policy`.
+
 ## Usage Statistics (JWT auth)
 
 ```python

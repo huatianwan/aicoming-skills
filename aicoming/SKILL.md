@@ -118,6 +118,26 @@ AIComing accepts requests in three formats and routes them to the right upstream
 
 The tables in this skill are **illustrative only**. They go stale. Treat them as hints about what *kind* of models exist, never as a source of truth for an actual request.
 
+## Using a Model Your Key Doesn't Have Yet
+
+AIComing is a marketplace: models are offered by **providers (merchants)**. A key can only call models from providers the account has **subscribed** to. "Model not in my key" means "I haven't subscribed to a provider that offers it" — the fix is to subscribe, not to get a new key.
+
+If a model the user wants isn't in `GET /v1/models`, guide them through this (JWT auth — login required, see `references/account.md`):
+
+1. **Find which provider offers the model.** In the public catalog `GET /api/v1/models`, each model object lists `provider_id`, `provider_name`, and `available_providers`.
+2. **Subscribe to that provider:**
+   ```
+   POST /api/v1/providers/{provider_id}/subscribe        # DELETE to unsubscribe
+   ```
+3. **If the model is gated behind a package**, purchase it:
+   ```
+   POST /api/v1/wallet/subscriptions/purchase   { "package_id": ... }
+   ```
+4. **Ensure the wallet has balance:** `GET /api/v1/wallet/balance` → top up via `POST /api/v1/wallet/topup` if needed.
+5. **Done.** The model now appears in `GET /v1/models` and is callable normally. Smart routing picks the best subscribed provider and fails over automatically.
+
+> A 402 / "provider not subscribed" style error on a chat request usually means step 2 is missing.
+
 ## Code Templates
 
 For full implementation code with streaming, polling, and error handling, read the reference files:
