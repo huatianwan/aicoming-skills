@@ -1,12 +1,12 @@
 # Google Gemini Format — Complete Code Templates
 
-AIComing accepts native Google Gemini requests at `POST https://aicoming.top/v1beta/models/{model}:{action}`. Use this when your code targets the Gemini REST format.
+AIComing accepts native Google Gemini requests at `POST https://api.aicoming.top/v1beta/models/{model}:{action}`. Use this when your code targets the Gemini REST format.
 
 Actions:
 - `:generateContent` — single response
 - `:streamGenerateContent` — streaming response
 
-> Fetch `GET https://aicoming.top/api/v1/models` for valid Gemini model IDs. The IDs below are illustrative.
+> Fetch `GET https://api.aicoming.top/api/v1/models` for valid Gemini model IDs. The IDs below are illustrative.
 
 ---
 
@@ -25,7 +25,7 @@ Content-Type: application/json
 
 ```bash
 # Non-streaming
-curl "https://aicoming.top/v1beta/models/gemini-3.1-pro-preview:generateContent" \
+curl "https://api.aicoming.top/v1beta/models/gemini-3.1-pro-preview:generateContent" \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -35,7 +35,7 @@ curl "https://aicoming.top/v1beta/models/gemini-3.1-pro-preview:generateContent"
   }'
 
 # Streaming
-curl -N "https://aicoming.top/v1beta/models/gemini-3.1-pro-preview:streamGenerateContent" \
+curl -N "https://api.aicoming.top/v1beta/models/gemini-3.1-pro-preview:streamGenerateContent" \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -52,7 +52,7 @@ import os
 import requests
 
 API_KEY = os.environ["AICOMING_API_KEY"]
-BASE = "https://aicoming.top/v1beta/models"
+BASE = "https://api.aicoming.top/v1beta/models"
 HEADERS = {
     "Authorization": f"Bearer {API_KEY}",
     "Content-Type": "application/json",
@@ -85,7 +85,7 @@ from google.genai.types import HttpOptions
 
 client = genai.Client(
     api_key=os.environ["AICOMING_API_KEY"],
-    http_options=HttpOptions(base_url="https://aicoming.top"),
+    http_options=HttpOptions(base_url="https://api.aicoming.top"),
 )
 resp = client.models.generate_content(
     model="gemini-3.1-pro-preview",

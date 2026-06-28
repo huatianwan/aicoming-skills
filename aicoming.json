@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://aicoming.top/v1",
+      "url": "https://api.aicoming.top/v1",
       "description": "AIComing OpenAI-compatible relay endpoint"
     }
   ],
@@ -30,7 +30,7 @@
                 "default": {
                   "summary": "Non-streaming request",
                   "value": {
-                    "model": "gpt-4o-mini",
+                    "model": "gpt-5.4-mini",
                     "messages": [
                       { "role": "system", "content": "You are a helpful assistant." },
                       { "role": "user", "content": "Explain quantum computing in simple terms." }
@@ -42,7 +42,7 @@
                 "streaming": {
                   "summary": "Streaming request",
                   "value": {
-                    "model": "gpt-4o-mini",
+                    "model": "gpt-5.4-mini",
                     "messages": [{ "role": "user", "content": "Write a short poem about AI." }],
                     "stream": true
                   }
@@ -87,7 +87,7 @@
         "type": "object",
         "required": ["model", "messages"],
         "properties": {
-          "model": { "type": "string", "description": "Model identifier. Fetch live IDs from GET https://aicoming.top/api/v1/models." },
+          "model": { "type": "string", "description": "Model identifier. Fetch live IDs from GET https://api.aicoming.top/api/v1/models." },
           "messages": { "type": "array", "items": { "$ref": "#/components/schemas/ChatMessage" } },
           "temperature": { "type": "number", "minimum": 0, "maximum": 2 },
           "max_tokens": { "type": "integer", "minimum": 1 },

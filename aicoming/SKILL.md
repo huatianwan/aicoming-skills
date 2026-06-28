@@ -30,7 +30,7 @@ from openai import OpenAI
 
 client = OpenAI(
     api_key="sk-your-api-key",
-    base_url="https://aicoming.top/v1",
+    base_url="https://api.aicoming.top/v1",
 )
 resp = client.chat.completions.create(
     model="gpt-5.4-mini",                      # verify via /api/v1/models first
@@ -45,8 +45,8 @@ AIComing exposes two API surfaces:
 
 | Surface | Base URL | Auth | Purpose |
 |---------|----------|------|---------|
-| **Relay API** | `https://aicoming.top/v1` | `Authorization: Bearer $AICOMING_API_KEY` | Model calls — chat, images, embeddings, rerank, audio, Anthropic, Gemini |
-| **Console API** | `https://aicoming.top/api/v1` | JWT (login) or public | Account, API keys, wallet, model list, vendors |
+| **Relay API** | `https://api.aicoming.top/v1` | `Authorization: Bearer $AICOMING_API_KEY` | Model calls — chat, images, embeddings, rerank, audio, Anthropic, Gemini |
+| **Console API** | `https://api.aicoming.top/api/v1` | JWT (login) or public | Account, API keys, wallet, model list, vendors |
 
 All relay requests require:
 ```
@@ -58,6 +58,7 @@ Content-Type: application/json
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| `GET`  | `/v1/models` | **Models this API key can call** (OpenAI-standard, key required) |
 | `POST` | `/v1/chat/completions` | OpenAI chat completions (streaming + non-streaming) |
 | `POST` | `/v1/completions` | Legacy text completions |
 | `POST` | `/v1/embeddings` | Text embeddings / vectorization |
@@ -74,7 +75,7 @@ Content-Type: application/json
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `GET`  | `/api/v1/models` | none | List all available models |
+| `GET`  | `/api/v1/models` | none | Full public marketplace catalog (browsing) |
 | `GET`  | `/api/v1/model-vendors` | none | List model vendors |
 | `GET`  | `/api/v1/providers` | none | List upstream providers |
 | `POST` | `/api/v1/auth/register` | none | Register a new account |
@@ -96,17 +97,24 @@ AIComing accepts requests in three formats and routes them to the right upstream
 
 ## CRITICAL: Never Fabricate — Always Fetch the Model List
 
-> **This rule is non-negotiable.** Available models and their IDs change constantly. Any model ID written into a prompt, code snippet, or reply MUST come from a live API response — not from memory, not from a training snapshot, not inferred by pattern, not copied from the examples below.
+> **This rule is non-negotiable.** Available models and their IDs change constantly, and **which models are usable depends on the API key** (its subscriptions, plan, and sub-station). Any model ID written into a prompt, code snippet, or reply MUST come from a live API response — not from memory, not from a training snapshot, not inferred by pattern, not copied from the examples below.
 
-### Fetch the model list BEFORE writing any code
+### There are TWO model-list endpoints — know the difference
 
-Always call this first. No authentication required:
+| Endpoint | Auth | Returns |
+|----------|------|---------|
+| `GET https://api.aicoming.top/v1/models` | **API key required** | **The models THIS key can actually call** (OpenAI-standard format). This is the one that matters for making requests. |
+| `GET https://api.aicoming.top/api/v1/models` | none | The full public marketplace catalog (everything on the platform, for browsing/comparison). Not all of these are necessarily callable by a given key. |
 
-```
-GET https://aicoming.top/api/v1/models
-```
+### The workflow
 
-Use the returned model IDs verbatim in your requests. If a model the user names is not in this list, tell them — do not guess an ID.
+1. **If the user has set `AICOMING_API_KEY`** → call the authenticated endpoint first to see what that key can use:
+   ```bash
+   curl https://api.aicoming.top/v1/models -H "Authorization: Bearer $AICOMING_API_KEY"
+   ```
+   Pick a model ID from this response. If the model the user wants isn't here, their key/plan may not include it — tell them, don't guess.
+
+2. **If no key is available yet** (e.g. just exploring what exists) → use the public catalog `GET /api/v1/models` (no auth) to show what the platform offers, but remind the user the final usable set is key-dependent.
 
 The tables in this skill are **illustrative only**. They go stale. Treat them as hints about what *kind* of models exist, never as a source of truth for an actual request.
 
@@ -152,7 +160,7 @@ The model `id` in the list response is a numeric primary key. **The string you p
 | `gpt-image-2-1k`, `gpt-image-2-2k`, `nano-banana-pro` | image | `/v1/images/generations` |
 | `bytedance/seedance-2.0/text-to-video` | video | (see provider docs) |
 
-> Models change constantly. The real, current list lives at `GET https://aicoming.top/api/v1/models` (no auth, response wrapped in `{"data":[...]}`). Always fetch it and use the `name` field verbatim before quoting a model ID. Note: embeddings / rerank / audio endpoints exist, but a matching model must be present in the list — verify before using.
+> Models change constantly. The real, current list lives at `GET https://api.aicoming.top/api/v1/models` (no auth, response wrapped in `{"data":[...]}`). Always fetch it and use the `name` field verbatim before quoting a model ID. Note: embeddings / rerank / audio endpoints exist, but a matching model must be present in the list — verify before using.
 
 ## MCP Server (Optional)
 

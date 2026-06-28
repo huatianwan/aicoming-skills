@@ -1,8 +1,8 @@
 # Anthropic Messages Format — Complete Code Templates
 
-AIComing accepts native Anthropic Messages requests at `POST https://aicoming.top/v1/messages`. Use this when your code already targets the Anthropic SDK/format — just change the base URL.
+AIComing accepts native Anthropic Messages requests at `POST https://api.aicoming.top/v1/messages`. Use this when your code already targets the Anthropic SDK/format — just change the base URL.
 
-> Authentication uses the AIComing API key. AIComing accepts it via the standard `Authorization: Bearer` header. Fetch `GET https://aicoming.top/api/v1/models` for valid Claude model IDs.
+> Authentication uses the AIComing API key. AIComing accepts it via the standard `Authorization: Bearer` header. Fetch `GET https://api.aicoming.top/api/v1/models` for valid Claude model IDs.
 
 ---
 
@@ -14,7 +14,7 @@ from anthropic import Anthropic
 
 client = Anthropic(
     api_key=os.environ["AICOMING_API_KEY"],
-    base_url="https://aicoming.top",   # SDK appends /v1/messages
+    base_url="https://api.aicoming.top",   # SDK appends /v1/messages
 )
 
 resp = client.messages.create(
@@ -34,7 +34,7 @@ import os
 import requests
 
 API_KEY = os.environ["AICOMING_API_KEY"]
-URL = "https://aicoming.top/v1/messages"
+URL = "https://api.aicoming.top/v1/messages"
 HEADERS = {
     "Authorization": f"Bearer {API_KEY}",
     "Content-Type": "application/json",
@@ -77,7 +77,7 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const client = new Anthropic({
   apiKey: process.env.AICOMING_API_KEY,
-  baseURL: 'https://aicoming.top',
+  baseURL: 'https://api.aicoming.top',
 });
 
 const resp = await client.messages.create({
@@ -93,7 +93,7 @@ console.log(resp.content[0].type === 'text' ? resp.content[0].text : '');
 ## cURL
 
 ```bash
-curl https://aicoming.top/v1/messages \
+curl https://api.aicoming.top/v1/messages \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -H "Content-Type: application/json" \
   -H "anthropic-version: 2023-06-01" \

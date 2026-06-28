@@ -1,6 +1,6 @@
 # Account, API Keys, Wallet & Usage — Complete Code Templates
 
-These are Console API endpoints under `https://aicoming.top/api/v1`. Most require a JWT obtained from login. The relay API (model calls) uses an API key instead — see the other reference files.
+These are Console API endpoints under `https://api.aicoming.top/api/v1`. Most require a JWT obtained from login. The relay API (model calls) uses an API key instead — see the other reference files.
 
 Two distinct credentials:
 - **JWT** — short-lived login token, used for console/account operations below.
@@ -12,12 +12,12 @@ Two distinct credentials:
 
 ```bash
 # Register
-curl -X POST https://aicoming.top/api/v1/auth/register \
+curl -X POST https://api.aicoming.top/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{"username":"alice","email":"alice@example.com","password":"12345678"}'
 
 # Login → returns a JWT
-curl -X POST https://aicoming.top/api/v1/auth/login \
+curl -X POST https://api.aicoming.top/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"alice","password":"12345678"}'
 # → {"data":{"token":"eyJ...","user":{...}}}
@@ -26,7 +26,7 @@ curl -X POST https://aicoming.top/api/v1/auth/login \
 ```python
 import requests
 
-BASE = "https://aicoming.top/api/v1"
+BASE = "https://api.aicoming.top/api/v1"
 
 def login(username: str, password: str) -> str:
     resp = requests.post(f"{BASE}/auth/login",

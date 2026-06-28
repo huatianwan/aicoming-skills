@@ -1,8 +1,8 @@
 # Images, Embeddings & Rerank — Complete Code Templates
 
-All OpenAI-compatible, under `https://aicoming.top/v1`. Use the OpenAI SDK with `base_url="https://aicoming.top/v1"`, or raw HTTP.
+All OpenAI-compatible, under `https://api.aicoming.top/v1`. Use the OpenAI SDK with `base_url="https://api.aicoming.top/v1"`, or raw HTTP.
 
-> Fetch `GET https://aicoming.top/api/v1/models` for valid model IDs and use the `name` field. Image models seen live include `gpt-image-2-1k`, `gpt-image-2-2k`, `nano-banana-pro`.
+> Fetch `GET https://api.aicoming.top/api/v1/models` for valid model IDs and use the `name` field. Image models seen live include `gpt-image-2-1k`, `gpt-image-2-2k`, `nano-banana-pro`.
 >
 > **Note:** the `/v1/embeddings`, `/v1/rerank`, and `/v1/audio/*` endpoints exist, but at the time of writing the model list contains only chat/image/video models. The embedding/rerank/audio model IDs below are placeholders — confirm a matching model is present in `/api/v1/models` before relying on them.
 
@@ -16,7 +16,7 @@ All OpenAI-compatible, under `https://aicoming.top/v1`. Use the OpenAI SDK with 
 import os
 from openai import OpenAI
 
-client = OpenAI(api_key=os.environ["AICOMING_API_KEY"], base_url="https://aicoming.top/v1")
+client = OpenAI(api_key=os.environ["AICOMING_API_KEY"], base_url="https://api.aicoming.top/v1")
 
 resp = client.images.generate(
     model="gpt-image-2-1k",                   # verify via /api/v1/models
@@ -30,7 +30,7 @@ print(resp.data[0].url)
 ### cURL
 
 ```bash
-curl https://aicoming.top/v1/images/generations \
+curl https://api.aicoming.top/v1/images/generations \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -64,7 +64,7 @@ print(len(vectors), "vectors,", len(vectors[0]), "dims")
 ### cURL
 
 ```bash
-curl https://aicoming.top/v1/embeddings \
+curl https://api.aicoming.top/v1/embeddings \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -108,7 +108,7 @@ body = {
     ],
     "top_n": 2,
 }
-resp = requests.post("https://aicoming.top/v1/rerank", json=body, headers=HEADERS, timeout=60)
+resp = requests.post("https://api.aicoming.top/v1/rerank", json=body, headers=HEADERS, timeout=60)
 resp.raise_for_status()
 for r in resp.json()["results"]:
     print(r["index"], r["relevance_score"])
@@ -131,7 +131,7 @@ Response:
 Speech-to-text (OpenAI Whisper format, multipart upload).
 
 ```bash
-curl https://aicoming.top/v1/audio/transcriptions \
+curl https://api.aicoming.top/v1/audio/transcriptions \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -F file="@audio.mp3" \
   -F model="whisper-1"
@@ -156,7 +156,7 @@ API_KEY = os.environ["AICOMING_API_KEY"]
 HEADERS = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 
 # 1. Submit
-sub = requests.post("https://aicoming.top/mj/submit/imagine",
+sub = requests.post("https://api.aicoming.top/mj/submit/imagine",
                     json={"prompt": "a cute corgi astronaut, digital art"},
                     headers=HEADERS, timeout=60)
 sub.raise_for_status()
@@ -165,7 +165,7 @@ task_id = sub.json()["result"]   # task id (field name may vary — inspect the 
 # 2. Poll
 while True:
     time.sleep(5)
-    r = requests.get(f"https://aicoming.top/mj/task/{task_id}/fetch", headers=HEADERS, timeout=30)
+    r = requests.get(f"https://api.aicoming.top/mj/task/{task_id}/fetch", headers=HEADERS, timeout=30)
     data = r.json()
     if data.get("status") in ("SUCCESS", "FAILURE"):
         print(data.get("imageUrl") or data)

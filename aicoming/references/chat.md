@@ -1,6 +1,6 @@
 # Chat Completions — Complete Code Templates
 
-OpenAI-compatible chat completions via `POST https://aicoming.top/v1/chat/completions`. Supports streaming (SSE) and non-streaming.
+OpenAI-compatible chat completions via `POST https://api.aicoming.top/v1/chat/completions`. Supports streaming (SSE) and non-streaming.
 
 ## Table of Contents
 - [Python (OpenAI SDK)](#python-openai-sdk)
@@ -8,7 +8,7 @@ OpenAI-compatible chat completions via `POST https://aicoming.top/v1/chat/comple
 - [Node.js / TypeScript (OpenAI SDK)](#nodejs--typescript-openai-sdk)
 - [cURL](#curl)
 
-> Before writing code, fetch `GET https://aicoming.top/api/v1/models` and use a real model ID. The IDs below are illustrative.
+> Before writing code, fetch `GET https://api.aicoming.top/api/v1/models` and use a real model ID. The IDs below are illustrative.
 
 ---
 
@@ -22,7 +22,7 @@ from openai import OpenAI
 
 client = OpenAI(
     api_key=os.environ["AICOMING_API_KEY"],
-    base_url="https://aicoming.top/v1",
+    base_url="https://api.aicoming.top/v1",
 )
 
 # Non-streaming
@@ -62,7 +62,7 @@ import json
 import requests
 
 API_KEY = os.environ["AICOMING_API_KEY"]
-BASE_URL = "https://aicoming.top/v1"
+BASE_URL = "https://api.aicoming.top/v1"
 HEADERS = {
     "Authorization": f"Bearer {API_KEY}",
     "Content-Type": "application/json",
@@ -115,7 +115,7 @@ import OpenAI from 'openai';
 
 const client = new OpenAI({
   apiKey: process.env.AICOMING_API_KEY,
-  baseURL: 'https://aicoming.top/v1',
+  baseURL: 'https://api.aicoming.top/v1',
 });
 
 // Non-streaming
@@ -145,7 +145,7 @@ process.stdout.write('\n');
 
 ```bash
 # Non-streaming
-curl https://aicoming.top/v1/chat/completions \
+curl https://api.aicoming.top/v1/chat/completions \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -154,7 +154,7 @@ curl https://aicoming.top/v1/chat/completions \
   }'
 
 # Streaming (SSE)
-curl -N https://aicoming.top/v1/chat/completions \
+curl -N https://api.aicoming.top/v1/chat/completions \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
