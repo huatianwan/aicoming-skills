@@ -1,0 +1,133 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AIComing Unified AI API Gateway",
+    "description": "OpenAI-compatible chat completions API for AIComing (aicoming.top). A unified gateway that routes to OpenAI, Claude, Gemini, DeepSeek and more, with smart routing and failover. See https://aicoming.top for details.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://aicoming.top/v1",
+      "description": "AIComing OpenAI-compatible relay endpoint"
+    }
+  ],
+  "tags": [
+    { "name": "Chat", "description": "OpenAI-compatible LLM chat completions." }
+  ],
+  "paths": {
+    "/chat/completions": {
+      "post": {
+        "operationId": "createChatCompletion",
+        "tags": ["Chat"],
+        "summary": "Create a chat completion",
+        "description": "Generates a model response for the given conversation. Supports streaming and non-streaming. The model is routed to the best available upstream provider.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateChatCompletionRequest" },
+              "examples": {
+                "default": {
+                  "summary": "Non-streaming request",
+                  "value": {
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                      { "role": "system", "content": "You are a helpful assistant." },
+                      { "role": "user", "content": "Explain quantum computing in simple terms." }
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 1024
+                  }
+                },
+                "streaming": {
+                  "summary": "Streaming request",
+                  "value": {
+                    "model": "gpt-4o-mini",
+                    "messages": [{ "role": "user", "content": "Write a short poem about AI." }],
+                    "stream": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful chat completion response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreateChatCompletionResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized — invalid or missing API key" },
+          "402": { "description": "Insufficient wallet balance" },
+          "429": { "description": "Rate limited" }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "API Key" }
+    },
+    "schemas": {
+      "ChatMessage": {
+        "type": "object",
+        "required": ["role", "content"],
+        "properties": {
+          "role": { "type": "string", "enum": ["system", "user", "assistant", "tool"] },
+          "content": { "type": "string" },
+          "name": { "type": "string" }
+        },
+        "additionalProperties": true
+      },
+      "CreateChatCompletionRequest": {
+        "type": "object",
+        "required": ["model", "messages"],
+        "properties": {
+          "model": { "type": "string", "description": "Model identifier. Fetch live IDs from GET https://aicoming.top/api/v1/models." },
+          "messages": { "type": "array", "items": { "$ref": "#/components/schemas/ChatMessage" } },
+          "temperature": { "type": "number", "minimum": 0, "maximum": 2 },
+          "max_tokens": { "type": "integer", "minimum": 1 },
+          "top_p": { "type": "number" },
+          "stream": { "type": "boolean", "default": false }
+        },
+        "additionalProperties": true
+      },
+      "ChatCompletionChoice": {
+        "type": "object",
+        "required": ["index", "message", "finish_reason"],
+        "properties": {
+          "index": { "type": "integer" },
+          "message": { "$ref": "#/components/schemas/ChatMessage" },
+          "finish_reason": { "type": "string" }
+        },
+        "additionalProperties": true
+      },
+      "ChatCompletionUsage": {
+        "type": "object",
+        "required": ["prompt_tokens", "completion_tokens", "total_tokens"],
+        "properties": {
+          "prompt_tokens": { "type": "integer" },
+          "completion_tokens": { "type": "integer" },
+          "total_tokens": { "type": "integer" }
+        }
+      },
+      "CreateChatCompletionResponse": {
+        "type": "object",
+        "required": ["id", "object", "created", "model", "choices"],
+        "properties": {
+          "id": { "type": "string" },
+          "object": { "type": "string", "example": "chat.completion" },
+          "created": { "type": "integer" },
+          "model": { "type": "string" },
+          "choices": { "type": "array", "items": { "$ref": "#/components/schemas/ChatCompletionChoice" } },
+          "usage": { "$ref": "#/components/schemas/ChatCompletionUsage" }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}
