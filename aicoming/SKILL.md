@@ -7,6 +7,20 @@ description: "用用户自己的 AIComing API key 直接调用 127+ 大模型干
 
 AIComing(aicoming.top)是聚合 127+ 大模型的 OpenAI 兼容网关。用户配好 `AICOMING_API_KEY` 后,你(agent)可以直接替用户调模型:生图、跑对话、查余额、提视频任务——不只是写接入代码。
 
+## Codex 用户必读:先放行沙箱网络
+
+Codex CLI 的沙箱**默认禁止命令访问外网**——症状是调用 api.aicoming.top 时报
+"访问套接字被拒 / connection refused",看起来像被拦截。修复:`~/.codex/config.toml`
+顶层加 `sandbox_mode = "workspace-write"`,并加表:
+
+```toml
+[sandbox_workspace_write]
+network_access = true
+```
+
+(或单次运行:`codex exec -s workspace-write -c sandbox_workspace_write.network_access=true ...`)
+Claude Code 无此问题。
+
 ## Key 与 Base URL
 
 - **Key 来源**:环境变量 `AICOMING_API_KEY`,或文件 `~/.aicoming/key`。没有时引导用户去 [控制台](https://aicoming.top/console) 创建(推荐"简单模式"向导:选模型→自动配路由),然后 `export AICOMING_API_KEY=sk-...`。**绝不替用户编造或猜测 key。**

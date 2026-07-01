@@ -39,6 +39,22 @@ git clone https://github.com/huatianwan/aicoming-skills.git
 Copy-Item -Recurse aicoming-skills/aicoming "$env:USERPROFILE\.claude\skills\aicoming"
 ```
 
+### Codex CLI
+
+```bash
+git clone https://github.com/huatianwan/aicoming-skills.git
+cp -r aicoming-skills/aicoming ~/.codex/skills/aicoming
+```
+
+**必须放行沙箱网络**，否则调用 API 会被 socket 层拦截（报"无法连接/访问套接字被拒"）。在 `~/.codex/config.toml` 顶层加：
+
+```toml
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = true
+```
+
 ### 其它助手
 
 把 `aicoming/` 目录拷到对应工具的 skill/知识库位置即可（内容是纯 Markdown + 一个零依赖 Python 脚本）。
