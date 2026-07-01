@@ -1,196 +1,85 @@
 ---
 name: aicoming
-description: "AIComing unified AI API gateway integration skill — call OpenAI, Claude, Gemini, DeepSeek and 100+ models through ONE OpenAI-compatible endpoint with smart routing and automatic failover. Use this skill when the user needs to integrate AI model calls into their project via AIComming / aicoming.top, configure AICOMING_API_KEY, call chat completions (streaming or not), generate images, create embeddings, rerank documents, transcribe audio, use the Anthropic Messages format, use the Google Gemini format, submit Midjourney tasks, query the available model list, manage API keys, or check wallet balance and usage. Applicable scenarios include: building an AI app, switching from OpenAI/OpenRouter to a unified gateway, multi-model routing, failover between providers, OpenAI SDK base_url replacement, text-to-image, embeddings, RAG retrieval reranking, speech-to-text. Even if the user doesn't explicitly mention AIComing, this skill should be considered whenever unified AI API gateway integration is involved."
+description: "用用户自己的 AIComing API key 直接调用 127+ 大模型干活:对话/生图/视频/嵌入/重排/语音转写,以及查余额、列可用模型;也支持把现有项目接入 AIComing(OpenAI/Anthropic/Gemini SDK 只换 base_url)。触发场景:(1)用户提到 aicoming / aicoming.top / AIComing key;(2)用户要求用自己的 AIComing 账号生成图片、调用某个大模型、查询余额或可用模型;(3)用户要把项目的模型调用切换/接入到 AIComing。Use when the user mentions AIComing or wants to call models / generate images / check balance with their AIComing API key."
 ---
 
-# AIComing API Integration Guide
+# AIComing — 用用户的 key 直接干活
 
-AIComing (aicoming.top) is a unified AI API gateway and model marketplace — an OpenRouter-style platform. Call OpenAI, Claude, Gemini, DeepSeek and many more models through a single OpenAI-compatible API, with smart routing, second-level failover, and session stickiness. This skill helps you quickly integrate the AIComing API into any project.
+AIComing(aicoming.top)是聚合 127+ 大模型的 OpenAI 兼容网关。用户配好 `AICOMING_API_KEY` 后,你(agent)可以直接替用户调模型:生图、跑对话、查余额、提视频任务——不只是写接入代码。
 
-## Quick Start
+## Key 与 Base URL
 
-### 1. Get an API Key
+- **Key 来源**:环境变量 `AICOMING_API_KEY`,或文件 `~/.aicoming/key`。没有时引导用户去 [控制台](https://aicoming.top/console) 创建(推荐"简单模式"向导:选模型→自动配路由),然后 `export AICOMING_API_KEY=sk-...`。**绝不替用户编造或猜测 key。**
+- **Base URL 必须用直连域** `https://api.aicoming.top`——生图/视频等长请求(60-300s)经 CDN 代理的域名会被 ~100 秒网关超时掐断,直连域无此限制。
+- 鉴权统一 `Authorization: Bearer $AICOMING_API_KEY`。
 
-Register and create an API Key in the [AIComing Console](https://aicoming.top/console).
+## 首选工具:scripts/aic.py
 
-### 2. Set Environment Variable
+零依赖(Python 3.8+ 标准库),封好了鉴权、心跳容错、生图幂等重试、b64 落盘、视频轮询。
+脚本在本 skill 目录下(Claude Code 通常是 `~/.claude/skills/aicoming/scripts/aic.py`;
+Windows 上用 `python`,类 Unix 用 `python3` 均可):
 
 ```bash
-export AICOMING_API_KEY="sk-your-api-key-here"
+python scripts/aic.py models [关键词]        # 该 key 可路由的模型列表
+python scripts/aic.py chat <model> <提示词>   # 一次性对话
+python scripts/aic.py image <model> <提示词> [--size 1024x1024] [-o out.png]
+python scripts/aic.py balance                # 余额(CNY)
+python scripts/aic.py video <model> <提示词>  # 提交视频任务并轮询到完成
 ```
 
-To persist across terminal sessions, add this line to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.).
+脚本没覆盖的(流式、多轮、embeddings、rerank、audio、Anthropic/Gemini 协议),按 references 里的示例直接发 HTTP。
 
-### 3. The OpenAI SDK Works Out of the Box
+## 铁律:模型名永远来自实时列表
 
-AIComing's relay API is OpenAI-compatible. The fastest integration is to point the official OpenAI SDK at AIComing's base URL — no other code changes:
+模型上下架频繁,**且每把 key 能调什么受它的路由范围和白名单限制**。任何写进请求/代码/回复的模型名,必须来自当次 `GET /v1/models`(带 key)响应的 `id` 字段——不凭记忆、不凭示例、不凭模式推断。
 
-```python
-from openai import OpenAI
+- `GET https://api.aicoming.top/v1/models`(带 key)→ OpenAI 标准格式,`data[].id` 就是请求里的 `"model"` 值。
+- `GET https://api.aicoming.top/api/v1/models`(免鉴权)→ 公开市场目录(价格/商家/延迟),用于浏览比价;请求用它的 `name` 字段。
+- 列表里有 ≠ 一定能调:key 可能设了 `allowed_models` 白名单(403 `model_not_allowed_for_key`)或路由范围不含该模型的商家——见 `references/account.md`。
 
-client = OpenAI(
-    api_key="sk-your-api-key",
-    base_url="https://api.aicoming.top/v1",
-)
-resp = client.chat.completions.create(
-    model="gpt-5.4-mini",                      # verify via /api/v1/models first
-    messages=[{"role": "user", "content": "Hello!"}],
-)
-print(resp.choices[0].message.content)
-```
+## 生图要点(必读再动手)
 
-## API Architecture
+1. **模型名**:通用生图直接用 `gpt-image-2`(网关按 size 自动分 1k/2k/4k 档),或列表里的其它 image 模型。
+2. **必带 `Idempotency-Key` 头**(aic.py 已自动带):生成要 60-300 秒,连接被客户端超时/网络切换掐断后,带同一个键原样重发即可**直取已生成的图、不重复扣费**。没带键的断连=白花钱重来。
+3. **心跳容错**:等待超 60s 网关会先回 200 头 + 周期性空白字节保活(响应带 `X-Aicoming-Heartbeat: 1`)。JSON 解析器天然容忍前导空白;但此时若生成失败,错误在 body 里:`{"error":{"message":...,"http_status":N}}` ——**解析成功响应前先检查顶层 error 字段**(aic.py 已处理)。
+4. 图生图:`POST /v1/images/edits`(multipart 或 JSON 带参考图),细节见 `references/media.md`。
 
-AIComing exposes two API surfaces:
+## 端点总览(全部实测存在)
 
-| Surface | Base URL | Auth | Purpose |
-|---------|----------|------|---------|
-| **Relay API** | `https://api.aicoming.top/v1` | `Authorization: Bearer $AICOMING_API_KEY` | Model calls — chat, images, embeddings, rerank, audio, Anthropic, Gemini |
-| **Console API** | `https://api.aicoming.top/api/v1` | JWT (login) or public | Account, API keys, wallet, model list, vendors |
+| 用途 | 端点 | 说明 |
+|---|---|---|
+| 对话 | `POST /v1/chat/completions` | OpenAI 格式,支持 `stream:true` |
+| Responses | `POST /v1/responses` | OpenAI Responses API(Codex 等) |
+| Claude 原生 | `POST /v1/messages` | Anthropic 格式,SDK 换 base_url 即用 |
+| Gemini 原生 | `POST /v1beta/models/{model}:generateContent` | Google 格式(含 :streamGenerateContent) |
+| 生图 | `POST /v1/images/generations` | 见上"生图要点" |
+| 图生图 | `POST /v1/images/edits` | multipart / JSON |
+| 视频 | `POST /v1/videos/generations` → `GET /v1/videos/generations/{id}` | 异步任务+轮询 |
+| 嵌入 | `POST /v1/embeddings` | OpenAI 格式 |
+| 重排 | `POST /v1/rerank` | RAG 重排 |
+| 语音转写 | `POST /v1/audio/transcriptions` / `translations` | Whisper 格式 |
+| 模型列表 | `GET /v1/models` | 带 key;`data[].id` 即模型名 |
+| 余额 | `GET /v1/balance` | 返回 `{balance, currency:"CNY"}` |
+| Midjourney | `POST /mj/submit/imagine` → `GET /mj/task/{id}/fetch` | 异步任务 |
 
-All relay requests require:
-```
-Authorization: Bearer $AICOMING_API_KEY
-Content-Type: application/json
-```
+> `/v1/*` 同时镜像在 `/v1/v1/*`(容错客户端多拼一层 /v1)。
 
-### Relay Endpoints (API Key auth)
+## 错误处理
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET`  | `/v1/models` | OpenAI-standard model list (key required for access; not subscription-filtered) |
-| `GET`  | `/v1/balance` | Wallet balance via API key (no JWT needed) |
-| `POST` | `/v1/chat/completions` | OpenAI chat completions (streaming + non-streaming) |
-| `POST` | `/v1/completions` | Legacy text completions |
-| `POST` | `/v1/responses` | OpenAI Responses API |
-| `POST` | `/v1/embeddings` | Text embeddings / vectorization |
-| `POST` | `/v1/images/generations` | Text-to-image |
-| `POST` | `/v1/images/edits` | Image editing |
-| `POST` | `/v1/videos/generations` | Text/image-to-video (async — returns a task) |
-| `GET`  | `/v1/videos/generations/{id}` | Poll video generation task |
-| `POST` | `/v1/rerank` | Document reranking |
-| `POST` | `/v1/audio/transcriptions` | Speech-to-text |
-| `POST` | `/v1/audio/translations` | Audio translation |
-| `POST` | `/v1/messages` | Anthropic Messages format (Claude) |
-| `POST` | `/v1beta/models/{model}:{action}` | Google Gemini format (generateContent / streamGenerateContent) |
-| `POST` | `/mj/submit/imagine` | Midjourney async task submit |
-| `GET`  | `/mj/task/{taskId}/fetch` | Midjourney task result poll |
+| 状态 | 含义 | 动作 |
+|---|---|---|
+| 401 | key 无效/过期 | 让用户检查 `AICOMING_API_KEY` |
+| 402 | 余额不足 | `GET /v1/balance` 确认,引导去控制台充值 |
+| 403 `model_not_allowed_for_key` | key 设了模型白名单 | 换白名单内模型,或让用户在控制台改 key 设置 |
+| 429 | 限速 | 指数退避重试(1s→2s→4s) |
+| 5xx / `all N endpoints failed` | 上游故障(网关已自动 failover 过) | 稍后重试;生图带同一个 Idempotency-Key 重试 |
 
-> The whole `/v1/*` surface is also mirrored under `/v1/v1/*` as an alias, for clients that wrongly append `/v1` to a base URL that already ends in `/v1`.
+**别盲目重试 POST 生成请求**(会重复扣费)——唯一例外:生图带同一个 `Idempotency-Key` 的重试是安全的。
 
-### Console Endpoints
+## 深入参考(按需读取)
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET`  | `/api/v1/models` | none | Full public marketplace catalog (browsing) |
-| `GET`  | `/api/v1/model-vendors` | none | List model vendors |
-| `GET`  | `/api/v1/providers` | none | List upstream providers |
-| `POST` | `/api/v1/auth/register` | none | Register a new account |
-| `POST` | `/api/v1/auth/login` | none | Login → returns JWT |
-| `GET`  | `/api/v1/keys` | JWT | List your API keys |
-| `POST` | `/api/v1/keys` | JWT | Create a new API key |
-| `DELETE` | `/api/v1/keys/{id}` | JWT | Delete an API key |
-| `GET`  | `/api/v1/wallet/balance` | JWT | Wallet balance |
-| `POST` | `/api/v1/wallet/topup` | JWT | Top up the wallet |
-| `GET`  | `/api/v1/user/usage` | JWT | Usage statistics |
-
-## Supported Protocols
-
-AIComing accepts requests in three formats and routes them to the right upstream model. Use whichever matches your existing code:
-
-- **OpenAI** — `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, `/v1/images/generations`. Drop-in compatible with the OpenAI SDK (just change `base_url`).
-- **Anthropic** — `/v1/messages`. Drop-in compatible with the Anthropic SDK (change `base_url`).
-- **Google Gemini** — `/v1beta/models/{model}:generateContent`. Compatible with the Gemini REST format.
-
-## CRITICAL: Never Fabricate — Always Fetch the Model List
-
-> **This rule is non-negotiable.** Available models and their IDs change constantly, and **which models are usable depends on the API key** (its subscriptions, plan, and sub-station). Any model ID written into a prompt, code snippet, or reply MUST come from a live API response — not from memory, not from a training snapshot, not inferred by pattern, not copied from the examples below.
-
-### There are TWO model-list endpoints — know the difference
-
-| Endpoint | Auth | Returns |
-|----------|------|---------|
-| `GET https://api.aicoming.top/v1/models` | **API key required (for access)** | The set of models the gateway can route to, in **OpenAI-standard format** (`{"object":"list","data":[{"id":"gpt-5.5","object":"model","owned_by":"aicoming"}]}`). This is what OpenAI-compatible clients (CC Switch, Codex, etc.) read. Use the `id` field as the `"model"` value. **Note:** this list is the platform/station-wide routable set — it is NOT filtered by the key's subscriptions. |
-| `GET https://api.aicoming.top/api/v1/models` | none | The rich public marketplace catalog (pricing, providers, vendors, latency). Use the `name` field as the model id (`id` here is a numeric DB key). Good for browsing/comparison. |
-
-### The workflow
-
-1. **To get valid model IDs for a request** → call `GET /v1/models` with the key and use an `id` from the response. (Or use the public catalog's `name` field.)
-2. **To browse/compare** (pricing, vendors) → use the public `GET /api/v1/models` (no auth).
-3. **Whether a specific call succeeds** is enforced at request time, not in the list: a model may be listed but still rejected if the account hasn't subscribed to a provider that offers it, or the wallet is empty. See "Using a Model Your Key Doesn't Have Yet" below.
-
-The tables in this skill are **illustrative only**. They go stale. Treat them as hints about what *kind* of models exist, never as a source of truth for an actual request.
-
-## Using a Model Your Key Doesn't Have Yet
-
-AIComing is a marketplace: models are offered by **providers (merchants)**. The `/v1/models` list shows what the gateway can route to, but actually **calling** a model can be rejected if the account hasn't **subscribed** to a provider that offers it (or the wallet is empty). The fix is to subscribe, not to get a new key.
-
-If a chat/image call is rejected with a subscription/permission error (or the user wants a model that isn't being served yet), guide them through this (JWT auth — login required, see `references/account.md`):
-
-1. **Find which provider offers the model.** In the public catalog `GET /api/v1/models`, each model object lists `provider_id`, `provider_name`, and `available_providers`.
-2. **Subscribe to that provider:**
-   ```
-   POST /api/v1/providers/{provider_id}/subscribe        # DELETE to unsubscribe
-   ```
-3. **If the model is gated behind a package**, purchase it:
-   ```
-   POST /api/v1/wallet/subscriptions/purchase   { "package_id": ... }
-   ```
-4. **Ensure the wallet has balance:** `GET /api/v1/wallet/balance` → top up via `POST /api/v1/wallet/topup` if needed.
-5. **Done.** The model now appears in `GET /v1/models` and is callable normally. Smart routing picks the best subscribed provider and fails over automatically.
-
-> A 402 / "provider not subscribed" style error on a chat request usually means step 2 is missing.
-
-## Code Templates
-
-For full implementation code with streaming, polling, and error handling, read the reference files:
-
-- **`references/chat.md`** — OpenAI chat completions, including SSE streaming (Python / Node.js / cURL)
-- **`references/anthropic.md`** — Anthropic Messages format (`/v1/messages`)
-- **`references/gemini.md`** — Google Gemini format (`/v1beta/models`)
-- **`references/images-embeddings.md`** — Text-to-image, embeddings, and rerank
-- **`references/account.md`** — Register / login / API key management / wallet / usage
-- **`references/models.md`** — Model list query + popular model quick reference
-
-Read the corresponding reference file when you need to write specific integration code.
-
-## Error Handling
-
-| HTTP Status | Meaning | Suggested Action |
-|-------------|---------|-----------------|
-| 401 | Invalid or expired API Key | Check `AICOMING_API_KEY` |
-| 402 | Insufficient balance | Top up at [Wallet](https://aicoming.top/console/wallet) |
-| 429 | Rate limited (100 req/min per key) | Wait and retry with exponential backoff |
-| 5xx | Upstream/server error | Smart routing usually retries automatically; otherwise retry |
-
-### Retry Strategy
-
-- **GET requests** (model list, balance): safe to retry up to 3 times with exponential backoff (1s → 2s → 4s).
-- **POST generation requests**: AIComing's smart router already fails over between providers. Do NOT blindly retry the same chat/image request — it may double-charge.
-
-## Popular Models (snapshot — MUST re-verify via `/api/v1/models` before use)
-
-The model `id` in the list response is a numeric primary key. **The string you pass as `"model"` in a request is the `name` field** (which equals `slug`). Examples below were live at the time of writing:
-
-| `name` (use this) | Type | Call via |
-|-------------------|------|----------|
-| `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini` | chat | `/v1/chat/completions` |
-| `gpt-5.3-codex` | chat (code) | `/v1/chat/completions` |
-| `claude-opus-4-8`, `claude-sonnet-4-6` | chat | `/v1/chat/completions` or `/v1/messages` |
-| `deepseek-v4-pro`, `deepseek-v4-flash` | chat | `/v1/chat/completions` |
-| `gemini-3.1-pro-preview` | chat | `/v1/chat/completions` or `/v1beta/models` |
-| `glm-5.1`, `kimi-k2.6` | chat | `/v1/chat/completions` |
-| `gpt-image-2-1k`, `gpt-image-2-2k`, `nano-banana-pro` | image | `/v1/images/generations` |
-| `bytedance/seedance-2.0/text-to-video` | video | (see provider docs) |
-
-> Models change constantly. The real, current list lives at `GET https://api.aicoming.top/api/v1/models` (no auth, response wrapped in `{"data":[...]}`). Always fetch it and use the `name` field verbatim before quoting a model ID. Note: embeddings / rerank / audio endpoints exist, but a matching model must be present in the list — verify before using.
-
-## MCP Server (Optional)
-
-If AIComing later ships an MCP server, install it for direct tool execution in any MCP client. Until then, this skill works purely by teaching the agent to call the HTTP API directly.
-
-## Smart Routing & Sub-stations
-
-- **Smart routing**: AIComing automatically selects the best provider per request and fails over on errors, with session stickiness. You don't manage providers manually — just call the model ID.
-- **Route policy**: advanced users can set per-key routing preferences via `PUT /api/v1/keys/{id}/route-policy` (JWT auth). See `references/account.md`.
-- **Sub-stations**: white-label resellers run on custom domains; the same relay API works under those domains too.
+- `references/chat.md` — 对话/流式/多轮/Responses(Python·Node·curl)
+- `references/media.md` — 生图/图生图/视频/语音 完整示例与参数
+- `references/protocols.md` — Anthropic SDK / Gemini SDK / OpenAI SDK 直连三协议
+- `references/account.md` — key 路由范围(收藏商家/指派/白名单)、余额、用量、route-policy
+- `references/integrate.md` — 把现有项目接入 AIComing(各 SDK 只换 base_url 的速查表)
