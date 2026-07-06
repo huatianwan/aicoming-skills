@@ -19,14 +19,22 @@ Give your AI coding assistant (Claude Code etc.) the ability to **act with your 
 
 ## 安装
 
-### Claude Code（推荐）
+一行命令（推荐，Claude Code 与 Codex 通用，自动装到已安装的工具；Windows / macOS / Linux 都行，只需 Node ≥ 16.7）：
+
+```bash
+npx -y github:huatianwan/aicoming-skills
+```
+
+装到 `~/.claude/skills/aicoming`（和 `~/.codex/skills/aicoming`，若已装 Codex）。想手动装见下。
+
+### 手动安装 · Claude Code
 
 ```bash
 git clone https://github.com/huatianwan/aicoming-skills.git
 cp -r aicoming-skills/aicoming ~/.claude/skills/aicoming
 ```
 
-或一行脚本（macOS / Linux / Git Bash）：
+或 shell 脚本（macOS / Linux / Git Bash）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/huatianwan/aicoming-skills/main/install.sh | sh

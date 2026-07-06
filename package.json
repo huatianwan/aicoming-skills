@@ -1,0 +1,28 @@
+{
+  "name": "aicoming-skills",
+  "version": "1.0.0",
+  "description": "一行安装 AIComing skill：让 Claude Code / Codex 直接用你的 AIComing key 生图、调 127+ 模型、提交视频、查余额。",
+  "bin": {
+    "aicoming-skills": "bin/install.js"
+  },
+  "files": [
+    "bin/",
+    "aicoming/"
+  ],
+  "engines": {
+    "node": ">=16.7"
+  },
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "skill",
+    "aicoming",
+    "openai-compatible",
+    "codex"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huatianwan/aicoming-skills.git"
+  },
+  "homepage": "https://aicoming.top"
+}
