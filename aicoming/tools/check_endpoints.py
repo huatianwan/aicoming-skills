@@ -20,4 +20,3 @@ def main() -> int:
     print(f"端点对账通过：{len(expected)} 个"); return 0
 
 if __name__ == "__main__": raise SystemExit(main())
-

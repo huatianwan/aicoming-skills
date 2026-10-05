@@ -15,4 +15,3 @@ class ReferenceTest(unittest.TestCase):
         self.assertFalse(any(str(ep["path"]).startswith("/v1/tool/") for ep in manifest["endpoints"]))
 
 if __name__ == "__main__": unittest.main()
-

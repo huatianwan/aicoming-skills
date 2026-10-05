@@ -4,9 +4,9 @@
 
 # API 端点事实表
 
-品牌：AIComing  
-API：`https://api.gptcoming.cn`  
-控制台：https://aicoming.top/console
+- 品牌：AIComing
+- API：`https://api.gptcoming.cn`
+- 控制台：https://aicoming.top/console
 
 | 方法 | 路径 | 用途 | 计费 | 异步 |
 |---|---|---|---|---|
