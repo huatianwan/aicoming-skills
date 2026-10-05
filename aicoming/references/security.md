@@ -24,7 +24,7 @@ The AIComing key (`sk-...`) is a bearer credential: anyone holding it can spend 
 - **In code**: reference `os.environ["AICOMING_API_KEY"]` / `process.env.AICOMING_API_KEY`. The literal never appears in your source.
 - **In the shell / one-off calls**: the env var expands without you typing the value:
   ```bash
-  curl https://api.aicoming.top/v1/balance -H "Authorization: Bearer $AICOMING_API_KEY"
+  curl https://api.gptcoming.cn/v1/balance -H "Authorization: Bearer $AICOMING_API_KEY"
   ```
 - **Via the skill's caller** (auto-auth + auto-mask):
   ```bash

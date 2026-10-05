@@ -16,7 +16,7 @@
 This is what OpenAI-compatible clients (CC Switch, Codex…) read. Returns `{"object":"list","data":[{"id":"gpt-5.5","object":"model","owned_by":"aicoming"}]}`.
 
 ```bash
-curl https://api.aicoming.top/v1/models \
+curl https://api.gptcoming.cn/v1/models \
   -H "Authorization: Bearer $AICOMING_API_KEY"
 ```
 
@@ -25,7 +25,7 @@ import os, requests
 
 def gateway_models() -> list:
     resp = requests.get(
-        "https://api.aicoming.top/v1/models",
+        "https://api.gptcoming.cn/v1/models",
         headers={"Authorization": f"Bearer {os.environ['AICOMING_API_KEY']}"},
         timeout=30,
     )
@@ -43,18 +43,18 @@ for mid in gateway_models():
 Use this to browse, compare pricing, or show vendors/providers. Here the model id you pass in requests is the **`name`** field.
 
 ```
-GET https://api.aicoming.top/api/v1/models
+GET https://api.gptcoming.cn/api/v1/models
 ```
 
 ```bash
-curl https://api.aicoming.top/api/v1/models
+curl https://api.gptcoming.cn/api/v1/models
 ```
 
 ```python
 import requests
 
 def list_models() -> list:
-    resp = requests.get("https://api.aicoming.top/api/v1/models", timeout=30)
+    resp = requests.get("https://api.gptcoming.cn/api/v1/models", timeout=30)
     resp.raise_for_status()
     data = resp.json()
     # Response is wrapped; the model array is usually under "data".
@@ -66,7 +66,7 @@ for m in models[:20]:
 ```
 
 ```typescript
-const resp = await fetch('https://api.aicoming.top/api/v1/models');
+const resp = await fetch('https://api.gptcoming.cn/api/v1/models');
 const json = await resp.json();
 const models = json.data ?? json;
 console.log(models.slice(0, 20));
@@ -124,7 +124,7 @@ import requests
 
 def get_model_meta(name: str) -> dict | None:
     """Return the full catalog object for a model (match on the `name` field)."""
-    data = requests.get("https://api.aicoming.top/api/v1/models", timeout=30).json()["data"]
+    data = requests.get("https://api.gptcoming.cn/api/v1/models", timeout=30).json()["data"]
     return next((m for m in data if m.get("name") == name), None)
 
 m = get_model_meta("bytedance/seedance-2.0/text-to-video")
@@ -155,6 +155,6 @@ Field → decision:
 
 Before sending any response or code that references a model ID:
 
-1. Fetch `GET https://api.aicoming.top/api/v1/models`.
+1. Fetch `GET https://api.gptcoming.cn/api/v1/models`.
 2. Confirm the exact ID the user wants is present.
 3. Use that exact ID. If it's absent, tell the user and suggest the closest available one — do NOT invent an ID.

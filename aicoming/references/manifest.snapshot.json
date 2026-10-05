@@ -1,0 +1,38 @@
+{
+  "version": "p1-2026-10-06",
+  "brand": "AIComing",
+  "base_url": "https://api.gptcoming.cn",
+  "console_url": "https://aicoming.top/console",
+  "capabilities": {"avatar_assets": true},
+  "endpoints": [
+    {"method":"GET","path":"/v1/models","summary":"列出当前 Key 可见模型","billing":"free","async":false},
+    {"method":"GET","path":"/api/v1/models","summary":"公开模型目录","billing":"free","async":false},
+    {"method":"GET","path":"/v1/models/{id}/access","summary":"模型访问预检（服务端 P2）","billing":"free","async":false},
+    {"method":"POST","path":"/v1/chat/completions","summary":"OpenAI 兼容对话","billing":"metered","async":false},
+    {"method":"POST","path":"/v1/responses","summary":"Responses API","billing":"metered","async":false},
+    {"method":"POST","path":"/v1/messages","summary":"Anthropic Messages","billing":"metered","async":false},
+    {"method":"POST","path":"/v1/embeddings","summary":"向量嵌入","billing":"metered","async":false},
+    {"method":"POST","path":"/v1/rerank","summary":"文本重排","billing":"metered","async":false},
+    {"method":"POST","path":"/v1/audio/transcriptions","summary":"音频转写","billing":"metered","async":false},
+    {"method":"POST","path":"/v1/images/generations","summary":"图片生成（支持 async）","billing":"metered","async":true},
+    {"method":"GET","path":"/v1/images/generations/{id}","summary":"图片任务状态","billing":"free","async":true},
+    {"method":"POST","path":"/v1/videos/generations","summary":"视频生成","billing":"metered","async":true},
+    {"method":"GET","path":"/v1/videos/generations/{id}","summary":"视频任务状态","billing":"free","async":true},
+    {"method":"GET","path":"/v1/videos/generations/{id}/download","summary":"下载视频结果","billing":"free","async":true},
+    {"method":"POST","path":"/v1/videos","summary":"Sora 兼容视频生成","billing":"metered","async":true},
+    {"method":"GET","path":"/v1/videos/{id}/content","summary":"Sora 兼容视频下载","billing":"free","async":true},
+    {"method":"GET","path":"/v1/tasks/{id}","summary":"统一任务状态（服务端 P2）","billing":"free","async":true},
+    {"method":"GET","path":"/v1/tasks","summary":"统一任务列表（服务端 P2）","billing":"free","async":true},
+    {"method":"POST","path":"/v1/assets","summary":"上传素材（能力开关控制）","billing":"free","async":false},
+    {"method":"GET","path":"/v1/assets","summary":"素材列表（能力开关控制）","billing":"free","async":false},
+    {"method":"GET","path":"/v1/assets/{id}","summary":"素材详情（能力开关控制）","billing":"free","async":false},
+    {"method":"PATCH","path":"/v1/assets/{id}","summary":"修改素材（能力开关控制）","billing":"free","async":false},
+    {"method":"DELETE","path":"/v1/assets/{id}","summary":"删除素材（能力开关控制）","billing":"free","async":false},
+    {"method":"GET","path":"/v1/balance","summary":"余额","billing":"free","async":false},
+    {"method":"GET","path":"/v1/dashboard/billing/usage","summary":"用量对账","billing":"free","async":false},
+    {"method":"POST","path":"/api/v1/device_auth","summary":"发起设备授权（服务端 P2）","billing":"free","async":true},
+    {"method":"POST","path":"/api/v1/device_auth/poll","summary":"轮询设备授权（服务端 P2）","billing":"free","async":true},
+    {"method":"GET","path":"/api/v1/skill-manifest","summary":"Skill 事实清单（服务端 P2）","billing":"free","async":false}
+  ]
+}
+

@@ -1,35 +1,39 @@
 # AIComing Skills
 
-Extend your AI coding assistant with deep knowledge of the [AIComing](https://aicoming.top) unified AI API gateway — generate integration code for OpenAI, Claude, Gemini, DeepSeek and more through one OpenAI-compatible endpoint with smart routing.
+让编码 Agent 通过 AIComing 安全调用统一模型网关：默认 API 为 `https://api.gptcoming.cn`，控制台为 [AIComing](https://aicoming.top/console)。Skill 会先读取实时模型列表、检查权限，再按一次提交、可恢复、立即落盘的规则完成任务。
 
 ## What are Skills?
 
 Skills are reusable knowledge packs that extend an AI coding assistant with domain knowledge, API references, and code templates. After installing the AIComing skill, your assistant understands the AIComing API deeply — it can write chat / image / embedding / rerank integration code in Python, Node.js, or cURL, in OpenAI, Anthropic, or Gemini format, on demand.
 
-Supports Claude Code today, and adapts to other tools with a similar skill/knowledge system.
+支持 Claude Code，也可复制到其他兼容 Skill 的工具。
 
 ## What's Included
 
-- Full API reference for all AIComing endpoints (relay + console)
-- Code templates for Python, Node.js/TypeScript, and cURL
-- OpenAI SDK / Anthropic SDK compatibility guides (just change `base_url`)
-- Streaming (SSE) implementations
-- Account / API-key / wallet / usage management
-- A hard "never fabricate model IDs — always fetch `/v1/models`" rule
-- API-key security rules + a zero-dependency `scripts/api.js` caller that auto-authenticates and masks secrets
+- 零依赖 `aicoming/scripts/aic.py`：登录、模型预检、对话、生图、视频、任务找回、余额与用量
+- Key 绑定主机、拒绝重定向、输出脱敏、私有权限存储
+- 图片/视频任务先落盘；断线后继续查询，完成后自动下载且不覆盖文件
+- 后端 manifest 生成的端点事实表与 CI 对账工具
+- 手写的授权、计费、模型权限和禁止操作规则
 
 ## Install
 
-### Quick install (recommended)
+### Claude Code / 通用安装
 
 ```bash
 npx skills add aicomingai/skills
 ```
 
-### Shell script
+### macOS / Linux
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/aicomingai/skills/main/install.sh | sh
+```
+
+### Windows PowerShell
+
+```powershell
+irm https://raw.githubusercontent.com/aicomingai/skills/main/install.ps1 | iex
 ```
 
 ### Manual
@@ -38,13 +42,13 @@ Copy the `aicoming/` directory to your skill location. For Claude Code: `~/.clau
 
 ## Configure
 
-Set your AIComing API key as an environment variable:
+隐藏输入并保存到 `~/.aicoming/key`（Windows 会收紧 ACL，macOS/Linux 权限为 0600）：
 
 ```bash
-export AICOMING_API_KEY="sk-your-api-key"
+python ~/.claude/skills/aicoming/scripts/aic.py login
 ```
 
-To persist it across sessions, add the line to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.). Get your key in the [AIComing Console](https://aicoming.top/console).
+服务端支持后也可使用设备码登录：`python .../aic.py login --device`。不要把 Key 放在命令参数、聊天记录或项目文件中。
 
 ## Usage Examples
 

@@ -1,8 +1,8 @@
 # Images, Embeddings & Rerank — Complete Code Templates
 
-All OpenAI-compatible, under `https://api.aicoming.top/v1`. Use the OpenAI SDK with `base_url="https://api.aicoming.top/v1"`, or raw HTTP.
+All OpenAI-compatible, under `https://api.gptcoming.cn/v1`. Use the OpenAI SDK with `base_url="https://api.gptcoming.cn/v1"`, or raw HTTP.
 
-> Fetch `GET https://api.aicoming.top/api/v1/models` for valid model IDs and use the `name` field. Image models seen live include `gpt-image-2-1k`, `gpt-image-2-2k`, `nano-banana-pro`.
+> Fetch `GET https://api.gptcoming.cn/api/v1/models` for valid model IDs and use the `name` field. Image models seen live include `gpt-image-2-1k`, `gpt-image-2-2k`, `nano-banana-pro`.
 >
 > **Note:** the `/v1/embeddings`, `/v1/rerank`, and `/v1/audio/*` endpoints exist, but at the time of writing the model list contains only chat/image/video models. The embedding/rerank/audio model IDs below are placeholders — confirm a matching model is present in `/api/v1/models` before relying on them.
 
@@ -22,7 +22,7 @@ from openai import OpenAI
 
 # Raise the SDK timeout for slow image renders — 600s (10 min)
 client = OpenAI(api_key=os.environ["AICOMING_API_KEY"],
-                base_url="https://api.aicoming.top/v1",
+                base_url="https://api.gptcoming.cn/v1",
                 timeout=600)
 
 resp = client.images.generate(
@@ -43,7 +43,7 @@ else:
 ### cURL
 
 ```bash
-curl --max-time 600 https://api.aicoming.top/v1/images/generations \
+curl --max-time 600 https://api.gptcoming.cn/v1/images/generations \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -77,7 +77,7 @@ print(len(vectors), "vectors,", len(vectors[0]), "dims")
 ### cURL
 
 ```bash
-curl https://api.aicoming.top/v1/embeddings \
+curl https://api.gptcoming.cn/v1/embeddings \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -121,7 +121,7 @@ body = {
     ],
     "top_n": 2,
 }
-resp = requests.post("https://api.aicoming.top/v1/rerank", json=body, headers=HEADERS, timeout=60)
+resp = requests.post("https://api.gptcoming.cn/v1/rerank", json=body, headers=HEADERS, timeout=60)
 resp.raise_for_status()
 for r in resp.json()["results"]:
     print(r["index"], r["relevance_score"])
@@ -144,7 +144,7 @@ Response:
 Speech-to-text (OpenAI Whisper format, multipart upload).
 
 ```bash
-curl https://api.aicoming.top/v1/audio/transcriptions \
+curl https://api.gptcoming.cn/v1/audio/transcriptions \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -F file="@audio.mp3" \
   -F model="whisper-1"
@@ -163,7 +163,7 @@ print(transcript.text)
 OpenAI-compatible image edit (verified). Multipart form with fields `model`, `image` (the source file), and `prompt`. Returns `data[0].b64_json` like generation. Set a long timeout (600s).
 
 ```bash
-curl --max-time 600 https://api.aicoming.top/v1/images/edits \
+curl --max-time 600 https://api.gptcoming.cn/v1/images/edits \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -F "model=gpt-image-2-1k" \
   -F "image=@photo.png" \
@@ -200,7 +200,7 @@ API_KEY = os.environ["AICOMING_API_KEY"]
 H = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 
 # 1. Submit (fast — short timeout is fine; the render happens async)
-sub = requests.post("https://api.aicoming.top/v1/videos/generations",
+sub = requests.post("https://api.gptcoming.cn/v1/videos/generations",
                     json={"model": "bytedance-seedance-2.0-text-to-video",
                           "prompt": "a rocket launching, cinematic"},
                     headers=H, timeout=60)
@@ -210,7 +210,7 @@ task_id = sub.json().get("id") or sub.json().get("data", {}).get("id")
 # 2. Poll with a hard cap (e.g. 120 tries * 5s = 10 min)
 for _ in range(120):
     time.sleep(5)
-    r = requests.get(f"https://api.aicoming.top/v1/videos/generations/{task_id}",
+    r = requests.get(f"https://api.gptcoming.cn/v1/videos/generations/{task_id}",
                      headers=H, timeout=30).json()
     status = r.get("status") or r.get("data", {}).get("status")
     if status in ("completed", "succeeded", "failed"):
@@ -228,7 +228,7 @@ else:
 
 ## Responses API — `/v1/responses`
 
-OpenAI's newer Responses API is also relayed. Use the OpenAI SDK's `client.responses.create(...)` with `base_url="https://api.aicoming.top/v1"`.
+OpenAI's newer Responses API is also relayed. Use the OpenAI SDK's `client.responses.create(...)` with `base_url="https://api.gptcoming.cn/v1"`.
 
 ---
 
@@ -237,7 +237,7 @@ OpenAI's newer Responses API is also relayed. Use the OpenAI SDK's `client.respo
 Unlike the JWT console endpoints, balance is also exposed under the relay with just the API key:
 
 ```bash
-curl https://api.aicoming.top/v1/balance -H "Authorization: Bearer $AICOMING_API_KEY"
+curl https://api.gptcoming.cn/v1/balance -H "Authorization: Bearer $AICOMING_API_KEY"
 ```
 
 ---
@@ -253,7 +253,7 @@ API_KEY = os.environ["AICOMING_API_KEY"]
 HEADERS = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 
 # 1. Submit
-sub = requests.post("https://api.aicoming.top/mj/submit/imagine",
+sub = requests.post("https://api.gptcoming.cn/mj/submit/imagine",
                     json={"prompt": "a cute corgi astronaut, digital art"},
                     headers=HEADERS, timeout=60)
 sub.raise_for_status()
@@ -262,7 +262,7 @@ task_id = sub.json()["result"]   # task id (field name may vary — inspect the 
 # 2. Poll
 while True:
     time.sleep(5)
-    r = requests.get(f"https://api.aicoming.top/mj/task/{task_id}/fetch", headers=HEADERS, timeout=30)
+    r = requests.get(f"https://api.gptcoming.cn/mj/task/{task_id}/fetch", headers=HEADERS, timeout=30)
     data = r.json()
     if data.get("status") in ("SUCCESS", "FAILURE"):
         print(data.get("imageUrl") or data)

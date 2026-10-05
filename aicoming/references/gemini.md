@@ -1,6 +1,6 @@
 # Google Gemini Format — Complete Code Templates
 
-AIComing accepts native Google Gemini requests at `POST https://api.aicoming.top/v1beta/models/{model}:{action}`. Use this when your code targets the Gemini REST format.
+AIComing accepts native Google Gemini requests at `POST https://api.gptcoming.cn/v1beta/models/{model}:{action}`. Use this when your code targets the Gemini REST format.
 
 > ⚠️ **Verified gotcha:** the upstream node only accepts **streaming** for this format. Use **`:streamGenerateContent`**. A non-streaming `:generateContent` call is rejected with:
 > ```json
@@ -8,7 +8,7 @@ AIComing accepts native Google Gemini requests at `POST https://api.aicoming.top
 > ```
 > If you want a simple non-streaming call, use the OpenAI-compatible `/v1/chat/completions` endpoint instead (see `chat.md`) — it works with any model on the gateway, including Gemini-family ones.
 
-> There may be no `gemini-*` model in the list at a given time, but the Gemini *format adapter* works against whatever models the gateway serves. Fetch `GET https://api.aicoming.top/v1/models` for valid model ids (use the `id` field).
+> There may be no `gemini-*` model in the list at a given time, but the Gemini *format adapter* works against whatever models the gateway serves. Fetch `GET https://api.gptcoming.cn/v1/models` for valid model ids (use the `id` field).
 
 ---
 
@@ -26,7 +26,7 @@ Content-Type: application/json
 ## cURL (streaming — the supported path)
 
 ```bash
-curl -N "https://api.aicoming.top/v1beta/models/<model-id>:streamGenerateContent" \
+curl -N "https://api.gptcoming.cn/v1beta/models/<model-id>:streamGenerateContent" \
   -H "Authorization: Bearer $AICOMING_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -48,7 +48,7 @@ data: {"candidates":[{"content":{"role":"model","parts":[{"text":"!"}]},...}]}
 import os, json, requests
 
 API_KEY = os.environ["AICOMING_API_KEY"]
-BASE = "https://api.aicoming.top/v1beta/models"
+BASE = "https://api.gptcoming.cn/v1beta/models"
 HEADERS = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 
 
@@ -87,7 +87,7 @@ from google.genai.types import HttpOptions
 
 client = genai.Client(
     api_key=os.environ["AICOMING_API_KEY"],
-    http_options=HttpOptions(base_url="https://api.aicoming.top"),
+    http_options=HttpOptions(base_url="https://api.gptcoming.cn"),
 )
 for chunk in client.models.generate_content_stream(
     model="gpt-5.4-mini",          # use an id from GET /v1/models
