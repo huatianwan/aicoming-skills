@@ -16,7 +16,7 @@ The AIComing key (`sk-...`) is a bearer credential: anyone holding it can spend 
    export AICOMING_API_KEY="sk-..."          # add to ~/.bashrc / ~/.zshrc to persist
    ```
    If a key has already been pasted into a chat/issue/PR, treat it as leaked and tell the user to regenerate it in the console.
-5. **Prefer the provided scripts over ad-hoc `curl`** for calling AIComing — `scripts/api.js` adds the auth header from the env var and masks any secret in the response, so keys never land in tool output.
+5. **Prefer the provided CLI over ad-hoc `curl`** — `scripts/aic.py` reads the Key from the protected local store, never puts it in command arguments, and redacts secrets from errors.
 6. **`.gitignore` the real key.** `.env` must never be committed; only `.env.example` (with a placeholder) belongs in git.
 
 ## Using the key without exposing it
@@ -28,8 +28,8 @@ The AIComing key (`sk-...`) is a bearer credential: anyone holding it can spend 
   ```
 - **Via the skill's caller** (auto-auth + auto-mask):
   ```bash
-  node scripts/api.js GET /v1/balance
-  node scripts/api.js GET /v1/models
+  python scripts/aic.py balance
+  python scripts/aic.py models
   ```
 
 ## Setting the key — the user must do this in their own shell
