@@ -47,7 +47,9 @@ def handler_for(state, redirect_port=None):
 
         def do_GET(self):
             state.requests.append((self.command, self.path, self.headers.get("Authorization"), self._body()))
-            if self.path == "/v1/models":
+            if self.path.startswith("/api/v1/agent/station/"):
+                self._json(200, {"ok": True, "path": self.path})
+            elif self.path == "/v1/models":
                 if state.mode == "redirect":
                     self.send_response(302)
                     self.send_header("Location", f"http://127.0.0.1:{redirect_port}/stolen")
@@ -79,7 +81,11 @@ def handler_for(state, redirect_port=None):
         def do_POST(self):
             body = self._body()
             state.requests.append((self.command, self.path, self.headers.get("Authorization"), body))
-            if self.path == "/v1/videos/generations":
+            if self.path == "/api/v1/agent/station/changes/preview":
+                self._json(200, {"confirmation": "agc_secret-confirmation", "change": json.loads(body)})
+            elif self.path == "/api/v1/agent/station/changes/commit":
+                self._json(200, {"committed": True})
+            elif self.path == "/v1/videos/generations":
                 self._json(200, {"id": "task-1", "status": "pending"})
             elif self.path == "/v1/chat/completions":
                 if state.mode == "permission":
@@ -236,6 +242,30 @@ class CLITest(unittest.TestCase):
         self.assertEqual(len(posts), 1)
         self.assertIn("不应重试", err)
         self.assertNotIn("super-secret", out + err)
+
+    def test_station_management_uses_separate_secret_and_requires_commit_flag(self):
+        state = State()
+        with Server(state) as srv:
+            store = aic.Store()
+            store.write_management_key("agm-super-secret-management")
+            store.write_config({"base_url": srv.base, "bound_host": "127.0.0.1"})
+            code, out, err = self.run_cli(["--base", srv.base, "station", "models"])
+            self.assertEqual(code, 0, err)
+            self.assertNotIn("super-secret-management", out + err)
+
+            code, out, err = self.run_cli(["--base", srv.base, "station", "preview-model", "12", "--disabled", "--markup-rate", "0.2"])
+            self.assertEqual(code, 0, err)
+            self.assertNotIn("secret-confirmation", out + err)
+
+            before = len(state.requests)
+            code, out, err = self.run_cli(["--base", srv.base, "station", "commit", "agc_secret-confirmation"])
+            self.assertEqual(code, 1)
+            self.assertIn("必须带 --confirm", err)
+            self.assertEqual(len(state.requests), before)
+
+            code, out, err = self.run_cli(["--base", srv.base, "station", "commit", "agc_secret-confirmation", "--confirm"])
+            self.assertEqual(code, 0, err)
+            self.assertNotIn("secret-confirmation", out + err)
 
 
 if __name__ == "__main__":

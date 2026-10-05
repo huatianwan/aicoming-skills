@@ -58,6 +58,23 @@ python scripts/aic.py tasks --pending
 
 完整计费规则见 `policy/billing.md`，禁止操作见 `policy/forbidden.md`。
 
+## 站长管理（仅分站长明确授权时）
+
+调用 Key 与站长管理凭据完全分开。只读授权：
+
+```bash
+python scripts/aic.py login --device --management read --base https://<分站域名>
+python scripts/aic.py station models
+python scripts/aic.py station customers
+python scripts/aic.py station earnings
+python scripts/aic.py station logs
+```
+
+需要改模型或套餐时，重新申请 `--management write`。写操作必须先执行
+`station preview-model` 或 `station preview-package`，把响应里的完整 `before/after`
+清单展示给用户；只有用户针对这份清单明确同意后，才可执行
+`station commit <一次性确认码> --confirm`。详见 `references/station-management.md`。
+
 ## Step 4：用固定格式结束
 
 汇报必须包含：

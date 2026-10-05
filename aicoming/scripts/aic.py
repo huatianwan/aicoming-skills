@@ -24,7 +24,7 @@ from typing import Any
 
 DEFAULT_BASE = "https://api.gptcoming.cn"
 DEFAULT_CONSOLE = "https://aicoming.top/console"
-KEY_RE = re.compile(r"sk-[A-Za-z0-9._-]{6,}")
+KEY_RE = re.compile(r"(?:sk-|agm_|agc_)[A-Za-z0-9._-]{6,}")
 PERMISSION_ERRORS = {
     "model_not_allowed_for_key",
     "model_not_in_package",
@@ -63,6 +63,7 @@ class Store:
         self.profile = profile_name(self.profile)
         self.dir = self.root if self.profile == "default" else self.root / self.profile
         self.key_path = self.dir / "key"
+        self.management_key_path = self.dir / "management-key"
         self.config_path = self.dir / "config.json"
         self.tasks_dir = self.dir / "tasks"
 
@@ -93,16 +94,28 @@ class Store:
             return ""
 
     def write_key(self, key: str) -> None:
+        self.write_private_secret(self.key_path, key)
+
+    def read_management_key(self) -> str:
+        try:
+            return self.management_key_path.read_text("utf-8").strip()
+        except FileNotFoundError:
+            return ""
+
+    def write_management_key(self, key: str) -> None:
+        self.write_private_secret(self.management_key_path, key)
+
+    def write_private_secret(self, path: Path, key: str) -> None:
         self.prepare()
-        _atomic_private_write(self.key_path, key.strip() + "\n")
+        _atomic_private_write(path, key.strip() + "\n")
         if os.name == "nt":
             user = os.environ.get("USERNAME", "")
-            cmd = ["icacls", str(self.key_path), "/inheritance:r"]
+            cmd = ["icacls", str(path), "/inheritance:r"]
             if user:
                 cmd.extend(["/grant:r", f"{user}:R"])
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode != 0:
-                self.key_path.unlink(missing_ok=True)
+                path.unlink(missing_ok=True)
                 raise RuntimeError("无法收紧 Key 文件 ACL，已取消保存")
 
     def task_path(self, token: str) -> Path:
@@ -326,7 +339,10 @@ def cmd_login(args: argparse.Namespace, store: Store) -> None:
 
 def device_login(args: argparse.Namespace, store: Store) -> None:
     client = Client(resolve_base(args, store), "", debug=args.debug)
-    start = client.request("POST", "/api/v1/device_auth", {"channel": "aic.py", "client_label": args.label}, auth=False)
+    payload = {"channel": "aic.py", "client_label": args.label}
+    if args.management:
+        payload.update({"purpose": "station_management", "access": args.management})
+    start = client.request("POST", "/api/v1/device_auth", payload, auth=False)
     print(f"验证码：{start['user_code']}\n请在浏览器打开：{start['verification_url']}", file=sys.stderr)
     interval = max(1, int(start.get("interval", 3)))
     deadline = time.time() + int(start.get("expires_in", 600))
@@ -337,6 +353,21 @@ def device_login(args: argparse.Namespace, store: Store) -> None:
         if status == "slow_down":
             interval += 2
         elif status == "approved":
+            if args.management:
+                token = str(result.get("management_token", ""))
+                if not token.startswith("agm_"):
+                    raise RuntimeError("授权响应缺少管理凭据")
+                approved_base = str(result.get("base_url") or client.base)
+                verified = Client(approved_base, token)
+                verified.request("GET", "/api/v1/agent/station/dashboard")
+                store.write_management_key(token)
+                config = store.read_config()
+                config.update({"base_url": verified.base, "bound_host": verified.host, "profile": store.profile,
+                               "management_scopes": result.get("scopes", "station:read")})
+                store.write_config(config)
+                emit(args, {"ok": True, "host": verified.host, "scopes": result.get("scopes")},
+                     "站长管理授权完成，凭据已安全保存（不会回显）")
+                return
             key = str(result.get("key", ""))
             approved_base = str(result.get("base_url") or client.base)
             verified = Client(approved_base, key)
@@ -480,6 +511,50 @@ def cmd_doctor(args: argparse.Namespace, store: Store) -> None:
          f"Skill 事实清单有更新：本地 {local.get('version', '未知')}，线上 {remote.get('version', '未知')}；请更新 Skill")
 
 
+def make_management_client(args: argparse.Namespace, store: Store) -> Client:
+    token = store.read_management_key()
+    if not token:
+        raise ValueError("尚未授权站长管理：请运行 aic.py login --device --management read")
+    config = store.read_config()
+    return Client(resolve_base(args, store), token, config.get("bound_host", ""), args.debug)
+
+
+def cmd_station(args: argparse.Namespace, store: Store) -> None:
+    client = make_management_client(args, store)
+    paths = {
+        "dashboard": "/api/v1/agent/station/dashboard",
+        "settings": "/api/v1/agent/station/settings",
+        "models": "/api/v1/agent/station/models",
+        "packages": "/api/v1/agent/station/packages",
+        "customers": "/api/v1/agent/station/customers",
+        "earnings": "/api/v1/agent/station/earnings",
+        "analytics": "/api/v1/agent/station/analytics",
+        "logs": "/api/v1/agent/station/logs",
+        "quality": "/api/v1/agent/station/quality",
+    }
+    if args.station_command in paths:
+        emit(args, client.request("GET", paths[args.station_command]))
+        return
+    if args.station_command == "preview-model":
+        payload: dict[str, Any] = {"action": "model_pricing", "model_id": args.model_id}
+        if args.enabled is not None:
+            payload["enabled"] = args.enabled
+        if args.markup_rate is not None:
+            payload["markup_rate"] = args.markup_rate
+        emit(args, client.request("POST", "/api/v1/agent/station/changes/preview", payload))
+        return
+    if args.station_command == "preview-package":
+        emit(args, client.request("POST", "/api/v1/agent/station/changes/preview",
+                                  {"action": "package_status", "package_id": args.package_id, "status": args.status}))
+        return
+    if args.station_command == "commit":
+        if not args.confirm:
+            raise ValueError("提交写操作必须带 --confirm，且只能在用户核对完整预览并明确同意后使用")
+        emit(args, client.request("POST", "/api/v1/agent/station/changes/commit", {"confirmation": args.confirmation}))
+        return
+    raise ValueError("未知站长管理命令")
+
+
 def follow_task(args: argparse.Namespace, store: Store, client: Client, record: dict[str, Any]) -> None:
     tid = str(record["id"])
     deadline = time.time() + args.wait
@@ -571,6 +646,7 @@ def build_parser() -> argparse.ArgumentParser:
     login = sub.add_parser("login")
     login.add_argument("--device", action="store_true")
     login.add_argument("--label", default="本机")
+    login.add_argument("--management", choices=["read", "write"])
     sub.add_parser("whoami")
     sub.add_parser("models")
     sub.add_parser("balance")
@@ -606,6 +682,23 @@ def build_parser() -> argparse.ArgumentParser:
     tasks = sub.add_parser("tasks")
     tasks.add_argument("--pending", action="store_true")
     sub.add_parser("doctor")
+    station = sub.add_parser("station")
+    station_sub = station.add_subparsers(dest="station_command", required=True)
+    for name in ("dashboard", "settings", "models", "packages", "customers", "earnings", "analytics", "logs", "quality"):
+        station_sub.add_parser(name)
+    preview_model = station_sub.add_parser("preview-model")
+    preview_model.add_argument("model_id", type=int)
+    model_state = preview_model.add_mutually_exclusive_group()
+    model_state.add_argument("--enabled", dest="enabled", action="store_true")
+    model_state.add_argument("--disabled", dest="enabled", action="store_false")
+    preview_model.set_defaults(enabled=None)
+    preview_model.add_argument("--markup-rate", type=float)
+    preview_package = station_sub.add_parser("preview-package")
+    preview_package.add_argument("package_id", type=int)
+    preview_package.add_argument("--status", required=True, choices=["active", "inactive"])
+    commit = station_sub.add_parser("commit")
+    commit.add_argument("confirmation")
+    commit.add_argument("--confirm", action="store_true")
     return parser
 
 
@@ -638,6 +731,8 @@ def main(argv: list[str] | None = None) -> int:
             cmd_tasks(args, store)
         elif args.command == "doctor":
             cmd_doctor(args, store)
+        elif args.command == "station":
+            cmd_station(args, store)
         return 0
     except APIError as exc:
         print(redact(handle_api_error(exc)), file=sys.stderr)
