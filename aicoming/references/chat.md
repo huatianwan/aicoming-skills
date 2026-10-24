@@ -1,90 +1,182 @@
-# 对话:chat completions / 流式 / 多轮 / Responses
+# Chat Completions — Complete Code Templates
 
-Base: `https://api.aicoming.top`,鉴权 `Authorization: Bearer $AICOMING_API_KEY`。
-模型名先 `GET /v1/models` 取当次可用的 `id`,以下示例中的模型名仅为占位。
+OpenAI-compatible chat completions via `POST https://api.gptcoming.cn/v1/chat/completions`. Supports streaming (SSE) and non-streaming.
 
-## 一次性对话(curl)
+## Table of Contents
+- [Python (OpenAI SDK)](#python-openai-sdk)
+- [Python (raw requests + streaming)](#python-raw-requests--streaming)
+- [Node.js / TypeScript (OpenAI SDK)](#nodejs--typescript-openai-sdk)
+- [cURL](#curl)
 
-```bash
-curl -s https://api.aicoming.top/v1/chat/completions \
-  -H "Authorization: Bearer $AICOMING_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"<从/v1/models取>","messages":[{"role":"user","content":"你好"}]}'
-```
+> Before writing code, fetch `GET https://api.gptcoming.cn/v1/models` and use a real model id. The IDs below are illustrative.
+>
+> **Reasoning models (verified):** some models (e.g. `deepseek-v4-flash`) emit thinking into `choices[0].message.reasoning_content` and put only the final answer in `content`. With a small `max_tokens` the budget can be eaten entirely by reasoning, leaving `content` empty and `finish_reason="length"`. Give reasoning models a generous `max_tokens` (hundreds+) and read `content` for the answer.
 
-## Python(OpenAI SDK,推荐)
+---
+
+## Python (OpenAI SDK)
+
+The simplest path — the official OpenAI SDK works unchanged except for `base_url`.
 
 ```python
-from openai import OpenAI
 import os
+from openai import OpenAI
 
-client = OpenAI(api_key=os.environ["AICOMING_API_KEY"],
-                base_url="https://api.aicoming.top/v1")
+client = OpenAI(
+    api_key=os.environ["AICOMING_API_KEY"],
+    base_url="https://api.gptcoming.cn/v1",
+)
 
+# Non-streaming
 resp = client.chat.completions.create(
-    model="<从/v1/models取>",
-    messages=[{"role": "user", "content": "你好"}],
+    model="gpt-5.4-mini",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Explain quantum computing in one sentence."},
+    ],
+    temperature=0.7,
+    max_tokens=1024,
 )
 print(resp.choices[0].message.content)
-```
 
-## 流式(SSE)
-
-```python
+# Streaming
 stream = client.chat.completions.create(
-    model="<model>", stream=True,
-    messages=[{"role": "user", "content": "写一首短诗"}],
+    model="gpt-5.4-mini",
+    messages=[{"role": "user", "content": "Write a haiku about the sea."}],
+    stream=True,
 )
 for chunk in stream:
-    delta = chunk.choices[0].delta.content or ""
-    print(delta, end="", flush=True)
+    delta = chunk.choices[0].delta.content
+    if delta:
+        print(delta, end="", flush=True)
+print()
 ```
 
-curl 流式:加 `"stream": true`,响应为 `data: {...}` 行,以 `data: [DONE]` 结束。
-慢首字期间网关会发 SSE 注释行保活,标准解析器自动忽略。
+---
 
-## 多轮对话
+## Python (raw requests + streaming)
 
-自己维护 messages 数组(system/user/assistant 轮替),每轮把历史带上。多轮想貼住同一家上游
-(利用上游 prompt cache),带自定义头 `X-Session-ID: <会话id>` ——同会话同价商家粘性路由。
-
-## 零依赖 Python(无 SDK,标准库)
+Use this when you don't want the OpenAI SDK dependency, or need full control over the SSE stream.
 
 ```python
-import json, os, urllib.request
+import os
+import json
+import requests
 
-req = urllib.request.Request(
-    "https://api.aicoming.top/v1/chat/completions",
-    data=json.dumps({
-        "model": "<model>",
-        "messages": [{"role": "user", "content": "你好"}],
-    }).encode(),
-    headers={"Authorization": "Bearer " + os.environ["AICOMING_API_KEY"],
-             "Content-Type": "application/json"})
-print(json.load(urllib.request.urlopen(req))["choices"][0]["message"]["content"])
+API_KEY = os.environ["AICOMING_API_KEY"]
+BASE_URL = "https://api.gptcoming.cn/v1"
+HEADERS = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json",
+}
+
+
+def chat(model: str, messages: list, **kwargs) -> str:
+    """Non-streaming chat completion."""
+    body = {"model": model, "messages": messages, **kwargs}
+    resp = requests.post(f"{BASE_URL}/chat/completions", json=body, headers=HEADERS, timeout=120)
+    resp.raise_for_status()
+    return resp.json()["choices"][0]["message"]["content"]
+
+
+def chat_stream(model: str, messages: list, **kwargs):
+    """Streaming chat completion — yields text deltas as they arrive."""
+    body = {"model": model, "messages": messages, "stream": True, **kwargs}
+    with requests.post(f"{BASE_URL}/chat/completions", json=body, headers=HEADERS,
+                       stream=True, timeout=300) as resp:
+        resp.raise_for_status()
+        for line in resp.iter_lines(decode_unicode=True):
+            if not line or not line.startswith("data: "):
+                continue
+            data = line[len("data: "):]
+            if data == "[DONE]":
+                break
+            try:
+                chunk = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+            delta = chunk["choices"][0]["delta"].get("content")
+            if delta:
+                yield delta
+
+
+if __name__ == "__main__":
+    print(chat("gpt-5.4-mini", [{"role": "user", "content": "Hello!"}]))
+
+    for piece in chat_stream("gpt-5.4-mini", [{"role": "user", "content": "Count to 5."}]):
+        print(piece, end="", flush=True)
+    print()
 ```
 
-## Node.js
+---
 
-```js
-import OpenAI from "openai";
+## Node.js / TypeScript (OpenAI SDK)
+
+```typescript
+import OpenAI from 'openai';
+
 const client = new OpenAI({
   apiKey: process.env.AICOMING_API_KEY,
-  baseURL: "https://api.aicoming.top/v1",
+  baseURL: 'https://api.gptcoming.cn/v1',
 });
-const r = await client.chat.completions.create({
-  model: "<model>",
-  messages: [{ role: "user", content: "你好" }],
+
+// Non-streaming
+const resp = await client.chat.completions.create({
+  model: 'gpt-5.4-mini',
+  messages: [{ role: 'user', content: 'Hello!' }],
+  max_tokens: 1024,
 });
-console.log(r.choices[0].message.content);
+console.log(resp.choices[0].message.content);
+
+// Streaming
+const stream = await client.chat.completions.create({
+  model: 'gpt-5.4-mini',
+  messages: [{ role: 'user', content: 'Write a short poem.' }],
+  stream: true,
+});
+for await (const chunk of stream) {
+  const delta = chunk.choices[0]?.delta?.content;
+  if (delta) process.stdout.write(delta);
+}
+process.stdout.write('\n');
 ```
 
-## Responses API(Codex 等客户端)
+---
 
-`POST /v1/responses`,OpenAI Responses 格式原样透传;支持流式。适合把 Codex CLI 的
-base url 指到 AIComing(`https://api.aicoming.top/v1`)。
+## cURL
 
-## 常用参数
+```bash
+# Non-streaming
+curl https://api.gptcoming.cn/v1/chat/completions \
+  -H "Authorization: Bearer $AICOMING_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-5.4-mini",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
 
-`temperature` `max_tokens` `top_p` `stop` `tools`/`tool_choice`(函数调用) `response_format`
-(JSON 模式) 均按 OpenAI 语义透传;推理系模型的 `reasoning`/thinking 参数按上游能力转换。
+# Streaming (SSE)
+curl -N https://api.gptcoming.cn/v1/chat/completions \
+  -H "Authorization: Bearer $AICOMING_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-5.4-mini",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": true
+  }'
+```
+
+Response (non-streaming, standard OpenAI format):
+```json
+{
+  "id": "chatcmpl-xxx",
+  "object": "chat.completion",
+  "model": "gpt-5.4-mini",
+  "choices": [{
+    "index": 0,
+    "message": {"role": "assistant", "content": "Hello! How can I help?"},
+    "finish_reason": "stop"
+  }],
+  "usage": {"prompt_tokens": 10, "completion_tokens": 8, "total_tokens": 18}
+}
+```

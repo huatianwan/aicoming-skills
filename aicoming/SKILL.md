@@ -1,99 +1,88 @@
 ---
 name: aicoming
-description: "用用户自己的 AIComing API key 直接调用 127+ 大模型干活:对话/生图/视频/嵌入/重排/语音转写,以及查余额、列可用模型;也支持把现有项目接入 AIComing(OpenAI/Anthropic/Gemini SDK 只换 base_url)。触发场景:(1)用户提到 aicoming / aicoming.top / AIComing key;(2)用户要求用自己的 AIComing 账号生成图片、调用某个大模型、查询余额或可用模型;(3)用户要把项目的模型调用切换/接入到 AIComing。Use when the user mentions AIComing or wants to call models / generate images / check balance with their AIComing API key."
+description: "AIComing 统一模型网关接入、模型调用、图片/视频生成、任务恢复、余额与用量查询。涉及 AIComing、api.gptcoming.cn、统一 API 网关、OpenAI 兼容接口、模型选择或生成任务时使用。"
 ---
 
-# AIComing — 用用户的 key 直接干活
+# AIComing
 
-AIComing(aicoming.top)是聚合 127+ 大模型的 OpenAI 兼容网关。用户配好 `AICOMING_API_KEY` 后,你(agent)可以直接替用户调模型:生图、跑对话、查余额、提视频任务——不只是写接入代码。
+所有操作遵循下面的固定流程。事实类端点以 `references/endpoints.generated.md` 为准，判断规则只以 `policy/` 为准。
 
-## Codex 用户必读:先放行沙箱网络
+## Step 0：先对齐，再改动
 
-Codex CLI 的沙箱**默认禁止命令访问外网**——症状是调用 api.aicoming.top 时报
-"访问套接字被拒 / connection refused",看起来像被拦截。修复:`~/.codex/config.toml`
-顶层加 `sandbox_mode = "workspace-write"`,并加表:
+1. 说明用户要完成的目标。
+2. 列出准备读取和修改的**绝对路径**。
+3. 读取现有配置；已有 provider、Key 或 SDK 配置时，先说明现状和拟议 diff，得到用户同意后再写。
+4. 意图不清时采用最小侵入方式，只协助取得账号或完成本次会话，不改项目配置。
 
-```toml
-[sandbox_workspace_write]
-network_access = true
-```
+详细规则见 `policy/consent.md`。
 
-(或单次运行:`codex exec -s workspace-write -c sandbox_workspace_write.network_access=true ...`)
-Claude Code 无此问题。
+## Step 1：安全取得 Key
 
-## Key 与 Base URL
-
-- **Key 来源**:环境变量 `AICOMING_API_KEY`,或文件 `~/.aicoming/key`。没有时引导用户去 [控制台](https://aicoming.top/console) 创建(推荐"简单模式"向导:选模型→自动配路由),然后 `export AICOMING_API_KEY=sk-...`。**绝不替用户编造或猜测 key。**
-- **Base URL 必须用直连域** `https://api.aicoming.top`——生图/视频等长请求(60-300s)经 CDN 代理的域名会被 ~100 秒网关超时掐断,直连域无此限制。
-- 鉴权统一 `Authorization: Bearer $AICOMING_API_KEY`。
-
-## 首选工具:scripts/aic.py
-
-零依赖(Python 3.8+ 标准库),封好了鉴权、心跳容错、生图幂等重试、b64 落盘、视频轮询。
-脚本在本 skill 目录下(Claude Code 通常是 `~/.claude/skills/aicoming/scripts/aic.py`;
-Windows 上用 `python`,类 Unix 用 `python3` 均可):
+优先使用设备码登录（服务端支持后）：
 
 ```bash
-python scripts/aic.py models [关键词]        # 该 key 可路由的模型列表
-python scripts/aic.py chat <model> <提示词>   # 一次性对话
-python scripts/aic.py image <model> <提示词> [--size 1024x1024] [-o out.png]
-python scripts/aic.py balance                # 余额(CNY)
-python scripts/aic.py video <model> <提示词>  # 提交视频任务并轮询到完成
+python scripts/aic.py login --device
 ```
 
-脚本没覆盖的(流式、多轮、embeddings、rerank、audio、Anthropic/Gemini 协议),按 references 里的示例直接发 HTTP。
+否则使用隐藏输入，Key 只写入 `~/.aicoming/key`：
 
-## 铁律:模型名永远来自实时列表
+```bash
+python scripts/aic.py login
+```
 
-模型上下架频繁,**且每把 key 能调什么受它的路由范围和白名单限制**。任何写进请求/代码/回复的模型名,必须来自当次 `GET /v1/models`(带 key)响应的 `id` 字段——不凭记忆、不凭示例、不凭模式推断。
+禁止让用户把 Key 发进聊天、命令行参数、日志或项目文件。见 `policy/security.md`。
 
-- `GET https://api.aicoming.top/v1/models`(带 key)→ OpenAI 标准格式,`data[].id` 就是请求里的 `"model"` 值。
-- `GET https://api.aicoming.top/api/v1/models`(免鉴权)→ 公开市场目录(价格/商家/延迟),用于浏览比价;请求用它的 `name` 字段。
-- 列表里有 ≠ 一定能调:key 可能设了 `allowed_models` 白名单(403 `model_not_allowed_for_key`)或路由范围不含该模型的商家——见 `references/account.md`。
+## Step 2：从当次列表选择模型
 
-## 生图要点(必读再动手)
+```bash
+python scripts/aic.py models
+python scripts/aic.py check-model <模型名>
+```
 
-1. **模型名**:通用生图直接用 `gpt-image-2`(网关按 size 自动分 1k/2k/4k 档),或列表里的其它 image 模型。
-2. **必带 `Idempotency-Key` 头**(aic.py 已自动带):生成要 60-300 秒,连接被客户端超时/网络切换掐断后,带同一个键原样重发即可**直取已生成的图、不重复扣费**。没带键的断连=白花钱重来。
-3. **心跳容错**:等待超 60s 网关会先回 200 头 + 周期性空白字节保活(响应带 `X-Aicoming-Heartbeat: 1`)。JSON 解析器天然容忍前导空白;但此时若生成失败,错误在 body 里:`{"error":{"message":...,"http_status":N}}` ——**解析成功响应前先检查顶层 error 字段**(aic.py 已处理)。
-4. 图生图:`POST /v1/images/edits`(multipart 或 JSON 带参考图),细节见 `references/media.md`。
+模型名必须来自本次返回；不得靠记忆猜测。换模型前展示类型、价格和能力差异并征得同意。权限拒绝按 `policy/model-access.md` 处理。
 
-## 端点总览(全部实测存在)
+## Step 3：只提交用户确认的一次调用
 
-| 用途 | 端点 | 说明 |
-|---|---|---|
-| 对话 | `POST /v1/chat/completions` | OpenAI 格式,支持 `stream:true` |
-| Responses | `POST /v1/responses` | OpenAI Responses API(Codex 等) |
-| Claude 原生 | `POST /v1/messages` | Anthropic 格式,SDK 换 base_url 即用 |
-| Gemini 原生 | `POST /v1beta/models/{model}:generateContent` | Google 格式(含 :streamGenerateContent) |
-| 生图 | `POST /v1/images/generations` | 见上"生图要点" |
-| 图生图 | `POST /v1/images/edits` | multipart / JSON |
-| 视频 | `POST /v1/videos/generations` → `GET /v1/videos/generations/{id}` | 异步任务+轮询 |
-| 嵌入 | `POST /v1/embeddings` | OpenAI 格式 |
-| 重排 | `POST /v1/rerank` | RAG 重排 |
-| 语音转写 | `POST /v1/audio/transcriptions` / `translations` | Whisper 格式 |
-| 模型列表 | `GET /v1/models` | 带 key;`data[].id` 即模型名 |
-| 余额 | `GET /v1/balance` | 返回 `{balance, currency:"CNY"}` |
-| Midjourney | `POST /mj/submit/imagine` → `GET /mj/task/{id}/fetch` | 异步任务 |
+```bash
+python scripts/aic.py chat --model <模型> --prompt <文本>
+python scripts/aic.py image --model <模型> --prompt <文本>
+python scripts/aic.py video --model <模型> --prompt <文本> --duration 5 --resolution 720p
+```
 
-> `/v1/*` 同时镜像在 `/v1/v1/*`(容错客户端多拼一层 /v1)。
+生成类请求只提交一次。重试通常会再次扣费，必须先说明并征得同意。断线后使用：
 
-## 错误处理
+```bash
+python scripts/aic.py task <任务ID或幂等键>
+python scripts/aic.py tasks --pending
+```
 
-| 状态 | 含义 | 动作 |
-|---|---|---|
-| 401 | key 无效/过期 | 让用户检查 `AICOMING_API_KEY` |
-| 402 | 余额不足 | `GET /v1/balance` 确认,引导去控制台充值 |
-| 403 `model_not_allowed_for_key` | key 设了模型白名单 | 换白名单内模型,或让用户在控制台改 key 设置 |
-| 429 | 限速 | 指数退避重试(1s→2s→4s) |
-| 5xx / `all N endpoints failed` | 上游故障(网关已自动 failover 过) | 稍后重试;生图带同一个 Idempotency-Key 重试 |
+完整计费规则见 `policy/billing.md`，禁止操作见 `policy/forbidden.md`。
 
-**别盲目重试 POST 生成请求**(会重复扣费)——唯一例外:生图带同一个 `Idempotency-Key` 的重试是安全的。
+## 站长管理（仅分站长明确授权时）
 
-## 深入参考(按需读取)
+只读凭据使用 `login --device --management read`；写凭据使用 `--management write`。
+写操作必须先用 `station preview-model` 或 `station preview-package` 展示完整
+`before/after`，用户针对该清单明确同意后，才可执行
+`station commit <一次性确认码> --confirm`。详见 `references/station-management.md`。
 
-- `references/chat.md` — 对话/流式/多轮/Responses(Python·Node·curl)
-- `references/media.md` — 生图/图生图/视频/语音 完整示例与参数
-- `references/protocols.md` — Anthropic SDK / Gemini SDK / OpenAI SDK 直连三协议
-- `references/account.md` — key 路由范围(收藏商家/指派/白名单)、余额、用量、route-policy
-- `references/integrate.md` — 把现有项目接入 AIComing(各 SDK 只换 base_url 的速查表)
+## Step 4：用固定格式结束
+
+汇报必须包含：
+
+- 实际提交次数；
+- 实际模型与规格；
+- 已知费用或明确标注的估算费用；
+- 任务 ID；
+- 所有产出文件的绝对路径；
+- 失败时是否计费，以及重新提交会再次计费的提示。
+
+不得把原始上游响应、Key、内部请求头、商家内部编号写入结果。
+
+## 当前接入文档
+
+- 参考素材与第三方画布：`references/avatar-assets.md`。
+- Gemini 三种 action：`references/gemini.md`。
+- 当前 Key 模型范围：`references/models.md`。
+- 返回图片格式：`references/images-embeddings.md`。
+
+以上参考文件随当前站点安装包一起发布；历史仓库示例不能替代实时模型列表和访问预检。

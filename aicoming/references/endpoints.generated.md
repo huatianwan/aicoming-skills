@@ -1,0 +1,64 @@
+<!-- DO NOT EDIT: generated from the live host manifest -->
+<!-- manifest-version: 2026-10-24.1 -->
+<!-- manifest-sha256: 4eb2191663420966edc951d90d3418cbbdc78af0e9bab459c7a2380123f70f58 -->
+
+# API 端点事实表
+
+品牌：AIComing  
+API：`https://api.gptcoming.cn`  
+控制台：https://aicoming.top/console
+
+| 方法 | 路径 | 用途 | 计费 | 异步 |
+|---|---|---|---|---|
+| GET | `/v1/models` | 列出当前 Key 可见模型 | free | 否 |
+| GET | `/api/v1/models` | 公开模型目录 | free | 否 |
+| GET | `/v1/models/:id/access` | 模型访问预检 | free | 否 |
+| POST | `/v1/chat/completions` | OpenAI 兼容对话 | metered | 否 |
+| POST | `/v1/completions` | OpenAI 兼容文本续写 | metered | 否 |
+| POST | `/v1/responses` | Responses API | metered | 否 |
+| POST | `/v1/messages` | Anthropic Messages | metered | 否 |
+| POST | `/v1/embeddings` | 向量嵌入 | metered | 否 |
+| POST | `/v1/rerank` | 文本重排 | metered | 否 |
+| POST | `/v1/systemone` | TypeSafe Jev 评估 | metered | 否 |
+| POST | `/v1/audio/transcriptions` | 音频转写 | metered | 否 |
+| POST | `/v1/audio/translations` | 音频翻译 | metered | 否 |
+| POST | `/v1/images/generations` | 图片生成 | metered | 是 |
+| POST | `/v1/images/edits` | 图片编辑（JSON/multipart 可请求 async，需支持的任务线路） | metered | 是 |
+| GET | `/v1/images/generations` | 图片任务列表 | free | 是 |
+| GET | `/v1/images/generations/:id` | 图片任务状态 | free | 是 |
+| POST | `/v1/videos/generations` | 视频生成 | metered | 是 |
+| GET | `/v1/videos/generations` | 视频任务列表 | free | 是 |
+| GET | `/v1/videos/generations/:id` | 视频任务状态 | free | 是 |
+| GET | `/v1/videos/generations/:id/download` | 下载视频结果 | free | 是 |
+| POST | `/v1/videos` | Sora 兼容视频生成 | metered | 是 |
+| GET | `/v1/videos/:id` | Sora 兼容视频状态 | free | 是 |
+| GET | `/v1/videos/:id/content` | Sora 兼容视频下载 | free | 是 |
+| GET | `/v1/tasks` | 统一任务列表 | free | 是 |
+| GET | `/v1/tasks/:id` | 统一任务状态 | free | 是 |
+| POST | `/v1/assets` | 上传素材 | free | 否 |
+| GET | `/v1/assets` | 素材列表 | free | 否 |
+| POST | `/v1/assets/batch-delete` | 批量删除素材 | free | 否 |
+| POST | `/v1/assets/validate-session` | 创建真人素材核验 | free | 否 |
+| GET | `/v1/assets/validate-session/:id` | 查询真人素材核验 | free | 否 |
+| GET | `/v1/assets/:id` | 素材详情 | free | 否 |
+| PATCH | `/v1/assets/:id` | 修改素材 | free | 否 |
+| DELETE | `/v1/assets/:id` | 删除素材 | free | 否 |
+| GET | `/v1/balance` | 余额 | free | 否 |
+| GET | `/v1/dashboard/billing/subscription` | 账单订阅摘要 | free | 否 |
+| GET | `/v1/dashboard/billing/usage` | 用量对账 | free | 否 |
+| POST | `/v1beta/models/*action` | Gemini action：生成计费；countTokens 为本地免费估算，详见具体 action | conditional | 否 |
+| POST | `/v1beta/models/:model:generateContent` | Gemini 非流式生成（Gemini 文本或支持的图片模型） | metered | 否 |
+| POST | `/v1beta/models/:model:streamGenerateContent` | Gemini 流式生成（Gemini 文本或支持的图片模型） | metered | 否 |
+| POST | `/v1beta/models/:model:countTokens` | 本地 token 估算，不调用上游，不作为最终账单 | free | 否 |
+| GET | `/v1beta/models` | Gemini 模型列表 | free | 否 |
+| GET | `/v1beta/models/:model` | Gemini 模型详情 | free | 否 |
+| POST | `/mj/submit/imagine` | Midjourney 文生图 | metered | 是 |
+| POST | `/mj/submit/change` | Midjourney 变换 | metered | 是 |
+| POST | `/mj/submit/blend` | Midjourney 混图 | metered | 是 |
+| POST | `/mj/submit/describe` | Midjourney 图像描述 | metered | 是 |
+| GET | `/mj/task/:taskId/fetch` | Midjourney 任务状态 | free | 是 |
+| POST | `/api/v1/device_auth` | 发起设备授权 | free | 是 |
+| POST | `/api/v1/device_auth/poll` | 轮询设备授权 | free | 是 |
+| GET | `/api/v1/skill-manifest` | Skill 事实清单 | free | 否 |
+
+> 素材库等能力以当前站点 manifest 的 `capabilities` 为准；关闭时不要向用户展示对应入口。

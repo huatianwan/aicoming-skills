@@ -1,103 +1,39 @@
 # AIComing Skill
 
-让你的 AI 编程助手（Claude Code 等）**直接用你的 AIComing key 干活**：生成图片、调用 127+ 大模型对话、提交视频任务、查余额、列可用模型——以及把你现有项目一键接入 AIComing。
+统一模型网关接入文档与 CLI。此仓库的 aicoming/ 来自当前服务端模板和接口事实清单，修订版本 **2026-10-24.1**；文件来源及内容哈希见 aicoming/SOURCE.json。
 
-> AIComing（[aicoming.top](https://aicoming.top)）是聚合 GPT、Claude、Gemini、DeepSeek 等 127+ 大模型的 OpenAI 兼容网关：一把 key、智能路由到最低价、秒级故障转移。
+## 文档入口
 
-Give your AI coding assistant (Claude Code etc.) the ability to **act with your AIComing key**: generate images, chat with 127+ models, submit video tasks, check balance — and migrate existing projects to AIComing in one step.
+- [主站 API 文档](https://aicoming.top/docs)
+- [视频教程](https://aicoming.top/docs-video.html)
+- [在线 Skill](https://aicoming.top/agent/SKILL.md)
+- [完整安装包](https://api.aicoming.top/agent/files.json)
+- [机器可读事实清单](https://api.aicoming.top/api/v1/skill-manifest)
+- [参考素材与第三方画布](aicoming/references/avatar-assets.md)
+- [模型发现与权限](aicoming/references/models.md)
+- [图片、视频与响应格式](aicoming/references/images-embeddings.md)
+- [Gemini](aicoming/references/gemini.md)
+- [计费与重试](aicoming/policy/billing.md)
 
-## 装完能干什么
+## 安装和使用
 
-装好后直接对助手说人话：
-
-- “用 aicoming 生成一张赛博朋克风格的猫，存到桌面”
-- “用 gpt-5.5 和 claude 各回答一遍这个问题，对比给我看”
-- “查一下我 aicoming 还剩多少钱”
-- “aicoming 上现在有哪些图片模型？”
-- “把这个项目的 OpenAI 调用全部切到 aicoming”
-- “用 Claude Code 直连 aicoming 该怎么配？”
-
-## 安装
-
-一行命令（推荐，Claude Code 与 Codex 通用，自动装到已安装的工具；Windows / macOS / Linux 都行，只需 Node ≥ 16.7）：
-
-```bash
-npx -y github:huatianwan/aicoming-skills
-```
-
-装到 `~/.claude/skills/aicoming`（和 `~/.codex/skills/aicoming`，若已装 Codex）。想手动装见下。
-
-### 手动安装 · Claude Code
+复制 aicoming/ 到所用工具的 Skill 目录，或使用在线安装包提供的安装器。现有仓库安装入口仍保留。CLI 需要 Python 3；Key 通过隐藏输入保存，不要粘贴到聊天或项目文件。
 
 ```bash
 git clone https://github.com/huatianwan/aicoming-skills.git
-cp -r aicoming-skills/aicoming ~/.claude/skills/aicoming
+# 在安装后的 Skill 目录运行：
+python scripts/aic.py login
+python scripts/aic.py models
+python scripts/aic.py check-model <本次列表中的模型名>
 ```
 
-或 shell 脚本（macOS / Linux / Git Bash）：
+生成请求只按用户授权提交一次。断线后先查已有任务和用量；同步生图只有成功结果缓存命中才可免费重放，同一幂等键不保证并发、尚未完成、跨节点或缓存未命中的请求免重复计费。完整规则见计费文档。
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/huatianwan/aicoming-skills/main/install.sh | sh
-```
+## 维护
 
-Windows PowerShell：
+事实源为 huatianwan/aicoming 的 internal/agentfiles/templates 与 internal/apimanifest/manifest.go。通过 `go run ./cmd/export-agent-skill` 导出主站安装包，校验 SHA-256 后同步，并记录 SOURCE.json；不单独修改生成的端点清单。分站使用自己的在线安装包，避免混用主站地址。
 
-```powershell
-git clone https://github.com/huatianwan/aicoming-skills.git
-Copy-Item -Recurse aicoming-skills/aicoming "$env:USERPROFILE\.claude\skills\aicoming"
-```
-
-### Codex CLI
-
-```bash
-git clone https://github.com/huatianwan/aicoming-skills.git
-cp -r aicoming-skills/aicoming ~/.codex/skills/aicoming
-```
-
-**必须放行沙箱网络**，否则调用 API 会被 socket 层拦截（报"无法连接/访问套接字被拒"）。在 `~/.codex/config.toml` 顶层加：
-
-```toml
-sandbox_mode = "workspace-write"
-
-[sandbox_workspace_write]
-network_access = true
-```
-
-### 其它助手
-
-把 `aicoming/` 目录拷到对应工具的 skill/知识库位置即可（内容是纯 Markdown + 一个零依赖 Python 脚本）。
-
-## 配置（一步）
-
-到 [AIComing 控制台](https://aicoming.top/console) 创建 API Key（推荐“简单模式”：选模型，路由自动配好），然后：
-
-```bash
-export AICOMING_API_KEY="sk-..."
-```
-
-写进 `~/.bashrc` / `~/.zshrc` 持久化；或写到文件 `~/.aicoming/key`。
-
-## 里面有什么
-
-```
-aicoming/
-├── SKILL.md                 # 主指南:直接调用工作流 + 端点总览 + 错误处理
-├── scripts/
-│   └── aic.py               # 零依赖 CLI:models / chat / image / balance / video
-└── references/
-    ├── chat.md              # 对话/流式/多轮/Responses
-    ├── media.md             # 生图(幂等重试/心跳容错)/图生图/视频/语音/MJ
-    ├── protocols.md         # OpenAI / Anthropic / Gemini 三协议直连
-    ├── account.md           # key 路由范围/白名单/余额/用量
-    └── integrate.md         # 各 SDK 与工具接入速查表
-```
-
-设计原则：
-
-- **能直接干活就不只给代码** —— 自带 `aic.py`，助手可直接生图/对话/查余额
-- **模型名永不虚构** —— 强制从 `GET /v1/models` 实时获取
-- **长任务不白花钱** —— 生图自动带 `Idempotency-Key`，断连重试直取结果不重复扣费
-- **全部端点经源码核对** —— 与 aicoming.top 生产网关逐一对齐
+本次文档验证不包含付费模型效果测试或所有第三方客户端兼容性承诺。实时模型、价格与权限以请求时查询结果为准。
 
 ## License
 
